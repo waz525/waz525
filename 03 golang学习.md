@@ -1,3 +1,5 @@
+
+
 # 1 GO基础
 
 ## 1.1 基础环境
@@ -232,6 +234,335 @@ abc 3 16
 ```
 
 ### 1.3.3 条件语句
+
+```go
+//05.go
+package main
+
+import "fmt"
+
+func main() {
+   /* 局部变量定义 */
+   var a int = 100;
+
+   /* 判断布尔表达式 */
+   if a < 20 {
+       /* 如果条件为 true 则执行以下语句 */
+       fmt.Printf("a 小于 20\n" );
+   } else {
+       /* 如果条件为 false 则执行以下语句 */
+       fmt.Printf("a 不小于 20\n" );
+   }
+   fmt.Printf("a 的值为 : %d\n", a);
+
+}
+```
+
+
+
+```shell
+[root@5d09d6b9f9d5 golang]# go run 05.go
+a 不小于 20
+a 的值为 : 100
+[root@5d09d6b9f9d5 golang]#
+```
+
+#### switch语句
+
+```go
+package main
+
+import "fmt"
+
+func main() {
+   /* 定义局部变量 */
+   var grade string = "B"
+   var marks int = 90
+
+   switch marks {
+      case 90: grade = "A"
+      case 80: grade = "B"
+      case 50,60,70 : grade = "C"
+      default: grade = "D"  
+   }
+
+   switch {
+      case grade == "A" :
+         fmt.Printf("优秀!\n" )    
+      case grade == "B", grade == "C" :
+         fmt.Printf("良好\n" )      
+      case grade == "D" :
+         fmt.Printf("及格\n" )      
+      case grade == "F":
+         fmt.Printf("不及格\n" )
+      default:
+         fmt.Printf("差\n" );
+   }
+   fmt.Printf("你的等级是 %s\n", grade );      
+}
+```
+> 注意：fallthrough 会强制执行后面的 case 语句，fallthrough 不会判断下一条 case 的表达式结果是否为 true
+
+#### Type Switch
+
+```go
+package main
+
+import "fmt"
+
+func main() {
+   var x interface{}
+     
+   switch i := x.(type) {
+      case nil:  
+         fmt.Printf(" x 的类型 :%T",i)                
+      case int:  
+         fmt.Printf("x 是 int 型")                      
+      case float64:
+         fmt.Printf("x 是 float64 型")          
+      case func(int) float64:
+         fmt.Printf("x 是 func(int) 型")                      
+      case bool, string:
+         fmt.Printf("x 是 bool 或 string 型" )      
+      default:
+         fmt.Printf("未知型")    
+   }  
+}
+```
+
+#### select 语句
+
+```go
+package main
+
+import "fmt"
+
+func main() {
+   var c1, c2, c3 chan int
+   var i1, i2 int
+   select {
+      case i1 = <-c1:
+         fmt.Printf("received ", i1, " from c1\n")
+      case c2 <- i2:
+         fmt.Printf("sent ", i2, " to c2\n")
+      case i3, ok := (<-c3):  // same as: i3, ok := <-c3
+         if ok {
+            fmt.Printf("received ", i3, " from c3\n")
+         } else {
+            fmt.Printf("c3 is closed\n")
+         }
+      default:
+         fmt.Printf("no communication\n")
+   }    
+}
+```
+
+### 1.3.4 循环语句
+
+```go
+package main
+
+import "fmt"
+
+func main() {
+        sum := 1
+        for ; sum <= 10; {
+                sum += sum
+        }
+        fmt.Println(sum)
+
+        // 这样写也可以，更像 While 语句形式
+        for sum <= 10{
+                sum += sum
+        }
+        fmt.Println(sum)
+}
+```
+
+#### For-each range 循环
+
+> 这种格式的循环可以对字符串、数组、切片等进行迭代输出元素。
+
+```go
+package main
+import "fmt"
+
+func main() {
+        strings := []string{"google", "runoob"}
+        for i, s := range strings {
+                fmt.Println(i, s)
+        }
+
+        numbers := [6]int{1, 2, 3, 5}
+        for i,x:= range numbers {
+                fmt.Printf("第 %d 位 x 的值 = %d\n", i,x)
+        }  
+}
+```
+
+### 1.3.5 函数
+
+> Go 语言函数定义格式如下：
+> 
+>    func function_name( [parameter list] ) [return_types] {
+> 函数体
+> }
+
+```go
+//09.go
+package main
+
+import "fmt"
+
+func swap(x, y string) (string, string) {
+   return y, x
+}
+
+func main() {
+   a, b := swap("Google", "Runoob")
+   fmt.Println(a, b)
+}
+```
+
+```shell
+[root@5d09d6b9f9d5 golang]# go run 09.go
+Runoob Google
+[root@5d09d6b9f9d5 golang]#
+```
+
+#### 引用传递值
+
+```go
+//10.go
+package main
+
+import "fmt"
+
+func main() {
+   /* 定义局部变量 */
+   var a int = 100
+   var b int= 200
+
+   fmt.Printf("交换前，a(%x) 的值 : %d\n", &a, a )
+   fmt.Printf("交换前，b(%x) 的值 : %d\n", &b, b )
+
+   /* 调用 swap() 函数
+   * &a 指向 a 指针，a 变量的地址
+   * &b 指向 b 指针，b 变量的地址
+   */
+   swap(&a, &b)
+
+   fmt.Printf("交换后，a(%x) 的值 : %d\n", &a , a )
+   fmt.Printf("交换后，b(%x) 的值 : %d\n", &b, b )
+}
+
+func swap(x *int, y *int) {
+   var temp int
+   temp = *x    /* 保存 x 地址上的值 */
+   *x = *y      /* 将 y 值赋给 x */
+   *y = temp    /* 将 temp 值赋给 y */
+}
+
+```
+
+```shell
+[root@5d09d6b9f9d5 golang]# go run 10.go
+交换前，a(c000016050) 的值 : 100
+交换前，b(c000016058) 的值 : 200
+交换后，a(c000016050) 的值 : 200
+交换后，b(c000016058) 的值 : 100
+[root@5d09d6b9f9d5 golang]#
+```
+
+#### 函数作为实参
+
+```go
+package main
+
+import (
+   "fmt"
+   "math"
+)
+
+func main(){
+   /* 声明函数变量 */
+   getSquareRoot := func(x float64) float64 {
+      return math.Sqrt(x)
+   }
+
+   /* 使用函数 */
+   fmt.Println(getSquareRoot(9))
+
+}
+```
+
+#### 闭包
+
+> Go 语言支持匿名函数，可作为闭包。匿名函数是一个"内联"语句或表达式。匿名函数的优越性在于可以直接使用函数内的变量，不必申明。
+>
+> 以下实例中，我们创建了函数 getSequence() ，返回另外一个函数。该函数的目的是在闭包中递增 i 变量，代码如下：
+
+```go
+package main
+
+import "fmt"
+
+func getSequence() func() int {
+   i:=0
+   return func() int {
+      i+=1
+     return i  
+   }
+}
+
+func main(){
+   /* nextNumber 为一个函数，函数 i 为 0 */
+   nextNumber := getSequence()  
+
+   /* 调用 nextNumber 函数，i 变量自增 1 并返回 */
+   fmt.Println(nextNumber())
+   fmt.Println(nextNumber())
+   fmt.Println(nextNumber())
+   
+   /* 创建新的函数 nextNumber1，并查看结果 */
+   nextNumber1 := getSequence()  
+   fmt.Println(nextNumber1())
+   fmt.Println(nextNumber1())
+}
+```
+
+#### 方法(类)
+
+> Go 没有面向对象，而我们知道常见的 Java/C++ 等语言中，实现类的方法做法都是编译器隐式的给函数加一个 this 指针，而在 Go 里，这个 this 指针需要明确的申明出来，其实和其它 OO 语言并没有很大的区别。
+
+```go
+package main
+
+import (
+   "fmt"  
+)
+
+/* 定义结构体 */
+type Circle struct {
+  radius float64
+}
+
+//该 method 属于 Circle 类型对象中的方法
+func (c Circle) getArea() float64 {
+  //c.radius 即为 Circle 类型对象中的属性
+  return 3.14 * c.radius * c.radius
+}
+
+func main() {
+  var c1 Circle
+  c1.radius = 10.00
+  fmt.Println("圆的面积 = ", c1.getArea())
+}
+```
+
+### 1.3.6 数组
+
+
 
 
 
