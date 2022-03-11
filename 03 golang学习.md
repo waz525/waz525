@@ -400,7 +400,435 @@ func main() {
 }
 ```
 
-### 1.3.5 函数
+
+### 1.3.5 数组
+
++ 数组声明 `var balance [10] float32`
+
++ 数组初始化 
+ `var balance = [5]float32{1000.0, 2.0, 3.4, 7.0, 50.0}`
+
+ `balance := [5]float32{1000.0, 2.0, 3.4, 7.0, 50.0}`
+
++ 如果数组长度不确定，可以使用 **...** 代替数组的长度，编译器会根据元素个数自行推断数组的长度
+
+  `balance := [...]float32{1000.0, 2.0, 3.4, 7.0, 50.0}`
+
+  `balance := [5]float32{1:2.0,3:7.0}`
+
++ 示例
+
+```go
+//11.go
+package main
+
+import "fmt"
+
+func main() {
+   var i,j,k int
+   // 声明数组的同时快速初始化数组
+   balance := [5]float32{1000.0, 2.0, 3.4, 7.0, 50.0}
+
+   /* 输出数组元素 */
+   for i = 0; i < 5; i++ {
+      fmt.Printf("balance[%d] = %f\n", i, balance[i] )
+   }
+
+   balance2 := [...]float32{1000.0, 2.0, 3.4, 7.0, 50.0}
+   /* 输出每个数组元素的值 */
+   for j = 0; j < 5; j++ {
+      fmt.Printf("balance2[%d] = %f\n", j, balance2[j] )
+   }
+
+   //  将索引为 1 和 3 的元素初始化
+   balance3 := [5]float32{1:2.0,3:7.0}
+   for k = 0; k < 5; k++ {
+      fmt.Printf("balance3[%d] = %f\n", k, balance3[k] )
+   }
+}
+
+```
+
+```shell
+[root@5d09d6b9f9d5 golang]# go run 11.go
+balance[0] = 1000.000000
+balance[1] = 2.000000
+balance[2] = 3.400000
+balance[3] = 7.000000
+balance[4] = 50.000000
+balance2[0] = 1000.000000
+balance2[1] = 2.000000
+balance2[2] = 3.400000
+balance2[3] = 7.000000
+balance2[4] = 50.000000
+balance3[0] = 0.000000
+balance3[1] = 2.000000
+balance3[2] = 0.000000
+balance3[3] = 7.000000
+balance3[4] = 0.000000
+[root@5d09d6b9f9d5 golang]#
+```
+
+#### 多维数组
+
++ 多维数组声明 `var variable_name [SIZE1][SIZE2]...[SIZEN] variable_type`
+
+```go
+//12.go
+package main
+import "fmt"
+
+func main() {
+   /* 数组 - 5 行 2 列*/
+   var a = [5][2]int{ {0,0}, {1,2}, {2,4}, {3,6},{4,8}}
+   var i, j int
+
+   /* 输出数组元素 */
+   for  i = 0; i < 5; i++ {
+      for j = 0; j < 2; j++ {
+         fmt.Printf("a[%d][%d] = %d\n", i,j, a[i][j] )
+      }
+   }
+
+    // 创建二维数组
+    sites := [2][2]string{}
+
+    // 向二维数组添加元素
+    sites[0][0] = "Google"
+    sites[0][1] = "Runoob"
+    sites[1][0] = "Taobao"
+    sites[1][1] = "Weibo"
+
+    // 显示结果
+    fmt.Println(sites)
+
+    // Step 1: 创建数组
+    values := [][]int{}
+
+    // Step 2: 使用 appped() 函数向空的二维数组添加两行一维数组
+    row1 := []int{1, 2, 3}
+    row2 := []int{4, 5, 6}
+    values = append(values, row1)
+    values = append(values, row2)
+
+    // Step 3: 显示两行数据
+    fmt.Println("Row 1")
+    fmt.Println(values[0])
+    fmt.Println("Row 2")
+    fmt.Println(values[1])
+
+    // Step 4: 访问第一个元素
+    fmt.Println("第一个元素为：")
+    fmt.Println(values[0][0])
+}
+
+```
+
+```shell
+[root@5d09d6b9f9d5 golang]# go run 12.go
+a[0][0] = 0
+a[0][1] = 0
+a[1][0] = 1
+a[1][1] = 2
+a[2][0] = 2
+a[2][1] = 4
+a[3][0] = 3
+a[3][1] = 6
+a[4][0] = 4
+a[4][1] = 8
+[[Google Runoob] [Taobao Weibo]]
+Row 1
+[1 2 3]
+Row 2
+[4 5 6]
+第一个元素为：
+1
+[root@5d09d6b9f9d5 golang]#
+```
+
+### 1.3.6 指针
+
+```go
+//13.go
+package main
+
+import "fmt"
+
+func main() {
+   var a int
+   var ptr *int
+   var pptr **int
+   a = 3000
+   /* 指针 ptr 地址 */
+   ptr = &a
+   /* 指向指针 ptr 地址 */
+   pptr = &ptr
+   /* 获取 pptr 的值 */
+   fmt.Printf("变量 a = %d\n", a )
+   fmt.Printf("指针变量 *ptr = %d\n", *ptr )
+   fmt.Printf("指向指针的指针变量 **pptr = %d\n", **pptr)
+}
+```
+
+```shell
+[root@5d09d6b9f9d5 golang]# go run 13.go
+变量 a = 3000
+指针变量 *ptr = 3000
+指向指针的指针变量 **pptr = 3000
+[root@5d09d6b9f9d5 golang]#
+```
+
+### 1.3.7 结构体
+
++ 定义结构体
+
+```
+type struct_variable_type struct {
+   member definition
+   member definition
+   ...
+   member definition
+}
+```
+
+```go
+//14.go
+package main
+
+import "fmt"
+
+type Books struct {
+   title string
+   author string
+   subject string
+   book_id int
+}
+
+func main() {
+
+    // 创建一个新的结构体
+    fmt.Println(Books{"Go 语言", "www.runoob.com", "Go 语言教程", 6495407})
+
+    // 也可以使用 key => value 格式
+    fmt.Println(Books{title: "Go 语言", author: "www.runoob.com", subject: "Go 语言教程", book_id: 6495407})
+
+    // 忽略的字段为 0 或 空
+   fmt.Println(Books{title: "Go 语言", author: "www.runoob.com"})
+
+   var Book1 Books        /* 声明 Book1 为 Books 类型 */
+   var Book2 Books        /* 声明 Book2 为 Books 类型 */
+
+   /* book 1 描述 */
+   Book1.title = "Go 语言"
+   Book1.author = "www.runoob.com"
+   Book1.subject = "Go 语言教程"
+   Book1.book_id = 6495407
+
+   /* book 2 描述 */
+   Book2.title = "Python 教程"
+   Book2.author = "www.runoob.com"
+   Book2.subject = "Python 语言教程"
+   Book2.book_id = 6495700
+
+   /* 打印 Book1 信息 */
+   fmt.Printf( "Book 1 title : %s\n", Book1.title)
+   fmt.Printf( "Book 1 author : %s\n", Book1.author)
+   fmt.Printf( "Book 1 subject : %s\n", Book1.subject)
+   fmt.Printf( "Book 1 book_id : %d\n", Book1.book_id)
+
+   /* 打印 Book2 信息 */
+   fmt.Printf( "Book 2 title : %s\n", Book2.title)
+   fmt.Printf( "Book 2 author : %s\n", Book2.author)
+   fmt.Printf( "Book 2 subject : %s\n", Book2.subject)
+   fmt.Printf( "Book 2 book_id : %d\n", Book2.book_id)
+
+   printBook(Book1)
+   printBook(Book2)
+
+   printBookPoint(&Book1)
+   printBookPoint(&Book2)
+
+}
+
+func printBook( book Books ) {
+   fmt.Printf( "Book title : %s\n", book.title)
+   fmt.Printf( "Book author : %s\n", book.author)
+   fmt.Printf( "Book subject : %s\n", book.subject)
+   fmt.Printf( "Book book_id : %d\n", book.book_id)
+}
+
+func printBookPoint( book *Books ) {
+   fmt.Printf( "Book title : %s\n", book.title)
+   fmt.Printf( "Book author : %s\n", book.author)
+   fmt.Printf( "Book subject : %s\n", book.subject)
+   fmt.Printf( "Book book_id : %d\n", book.book_id)
+}
+```
+
+```shell
+[root@5d09d6b9f9d5 golang]# go run 14.go
+{Go 语言 www.runoob.com Go 语言教程 6495407}
+{Go 语言 www.runoob.com Go 语言教程 6495407}
+{Go 语言 www.runoob.com  0}
+Book 1 title : Go 语言
+Book 1 author : www.runoob.com
+Book 1 subject : Go 语言教程
+Book 1 book_id : 6495407
+Book 2 title : Python 教程
+Book 2 author : www.runoob.com
+Book 2 subject : Python 语言教程
+Book 2 book_id : 6495700
+Book title : Go 语言
+Book author : www.runoob.com
+Book subject : Go 语言教程
+Book book_id : 6495407
+Book title : Python 教程
+Book author : www.runoob.com
+Book subject : Python 语言教程
+Book book_id : 6495700
+Book title : Go 语言
+Book author : www.runoob.com
+Book subject : Go 语言教程
+Book book_id : 6495407
+Book title : Python 教程
+Book author : www.runoob.com
+Book subject : Python 语言教程
+Book book_id : 6495700
+[root@5d09d6b9f9d5 golang]#
+```
+
+### 1.3.8 范围(Range)
+
+>  range 关键字用于 for 循环中迭代数组(array)、切片(slice)、通道(channel)或集合(map)的元素。在数组和切片中它返回元素的索引和索引对应的值，在集合中返回 key-value 对。
+
+```go
+//15.go
+package main
+import "fmt"
+func main() {
+    //这是我们使用range去求一个slice的和。使用数组跟这个很类似
+    nums := []int{2, 3, 4}
+    sum := 0
+    for _, num := range nums {
+        sum += num
+    }
+    fmt.Println("sum:", sum)
+    //在数组上使用range将传入index和值两个变量。上面那个例子我们不需要使用该元素的序号，所以我们使用空白符"_"省略了。有时侯我们确实需要知道它的索引。
+    for i, num := range nums {
+        if num == 3 {
+            fmt.Println("index:", i)
+        }
+    }
+    //range也可以用在map的键值对上。
+    kvs := map[string]string{"a": "apple", "b": "banana"}
+    for k, v := range kvs {
+        fmt.Printf("%s -> %s\n", k, v)
+    }
+    //range也可以用来枚举Unicode字符串。第一个参数是字符的索引，第二个是字符（Unicode的值）本身。
+    for i, c := range "go" {
+        fmt.Println(i, c)
+    }
+
+        t,ok := kvs["a"] ;
+        fmt.Println(t,ok)
+}
+```
+
+```shell
+[root@5d09d6b9f9d5 golang]# go run 15.go
+sum: 9
+index: 1
+b -> banana
+a -> apple
+0 103
+1 111
+apple true
+[root@5d09d6b9f9d5 golang]#
+```
+
+### 1.3.9 Map(集合)
+
+````go
+/* 声明变量，默认 map 是 nil */
+var map_variable map[key_data_type]value_data_type
+
+/* 使用 make 函数 */
+map_variable := make(map[key_data_type]value_data_type)
+````
+
+> delete() 函数用于删除集合的元素, 参数为 map 和其对应的 key
+
+```go
+// 16.go
+package main
+
+import "fmt"
+
+func main() {
+    var countryCapitalMap map[string]string /*创建集合 */
+    countryCapitalMap = make(map[string]string)
+
+    /* map插入key - value对,各个国家对应的首都 */
+    countryCapitalMap [ "France" ] = "巴黎"
+    countryCapitalMap [ "Italy" ] = "罗马"
+    countryCapitalMap [ "Japan" ] = "东京"
+    countryCapitalMap [ "India " ] = "新德里"
+
+    /*使用键输出地图值 */
+    for country := range countryCapitalMap {
+        fmt.Println(country, "首都是", countryCapitalMap [country])
+    }
+
+    /*查看元素在集合中是否存在 */
+    capital, ok := countryCapitalMap [ "American" ] /*如果确定是真实的,则存在,否则不存在 */
+    /*fmt.Println(capital) */
+    /*fmt.Println(ok) */
+    if (ok) {
+        fmt.Println("American 的首都是", capital)
+    } else {
+        fmt.Println("American 的首都不存在")
+    }
+
+    /*删除元素*/ delete(countryCapitalMap, "France")
+        fmt.Println("法国条目被删除")
+
+        fmt.Println("删除元素后地图")
+
+        /*打印地图*/
+        for country := range countryCapitalMap {
+                fmt.Println(country, "首都是", countryCapitalMap [ country ])
+        }
+}
+
+```
+
+```shell
+[root@5d09d6b9f9d5 golang]# go run 16.go
+France 首都是 巴黎
+Italy 首都是 罗马
+Japan 首都是 东京
+India  首都是 新德里
+American 的首都不存在
+法国条目被删除
+删除元素后地图
+Japan 首都是 东京
+India  首都是 新德里
+Italy 首都是 罗马
+[root@5d09d6b9f9d5 golang]#
+```
+
+
+
+
+
+## 1.4 切片(Slice)  待补充
+
+> ​       切片是对数组的抽象。数组的长度不可改变，与数组相比切片的长度是不固定的，可以追加元素，在追加时可能使切片的容量增大。
+
+
+## 1.5 函数
+
+### 1.5.1 函数定义
 
 > Go 语言函数定义格式如下：
 > 
@@ -430,7 +858,7 @@ Runoob Google
 [root@5d09d6b9f9d5 golang]#
 ```
 
-#### 引用传递值
+### 1.5.2 引用传递值
 
 ```go
 //10.go
@@ -462,7 +890,6 @@ func swap(x *int, y *int) {
    *x = *y      /* 将 y 值赋给 x */
    *y = temp    /* 将 temp 值赋给 y */
 }
-
 ```
 
 ```shell
@@ -474,7 +901,7 @@ func swap(x *int, y *int) {
 [root@5d09d6b9f9d5 golang]#
 ```
 
-#### 函数作为实参
+### 1.5.3 函数作为实参
 
 ```go
 package main
@@ -496,7 +923,7 @@ func main(){
 }
 ```
 
-#### 闭包
+### 1.5.4 闭包
 
 > Go 语言支持匿名函数，可作为闭包。匿名函数是一个"内联"语句或表达式。匿名函数的优越性在于可以直接使用函数内的变量，不必申明。
 >
@@ -531,7 +958,7 @@ func main(){
 }
 ```
 
-#### 方法(类)
+### 1.5.5 方法(类)
 
 > Go 没有面向对象，而我们知道常见的 Java/C++ 等语言中，实现类的方法做法都是编译器隐式的给函数加一个 this 指针，而在 Go 里，这个 this 指针需要明确的申明出来，其实和其它 OO 语言并没有很大的区别。
 
@@ -560,21 +987,24 @@ func main() {
 }
 ```
 
-### 1.3.6 数组
+## 1.6 接口 
+
+## 1.7 错误处理 
+
+## 1.8 并发
 
 
 
 
 
+# 99 学习实例
 
+###  99.1 利用打包资源文件
 
-# 学习实例
-
-###  利用打包资源文件
-
-> fsman.go
+> fsman.go 
 
 ```go
+//go version >= 1.6
 package main
 
 import (
