@@ -825,6 +825,99 @@ Italy 首都是 罗马
 
 > ​       切片是对数组的抽象。数组的长度不可改变，与数组相比切片的长度是不固定的，可以追加元素，在追加时可能使切片的容量增大。
 
+### 1.4.1 定义和初始化切片
+
+```go
+var identifier []type    //定义一个空切片
+或
+identifier := make([]type, length, capacity)  //其中 capacity 为可选参数
+
+s :=[] int {1,2,3 }  //初始化切片，[] 表示是切片类型，{1,2,3} 初始化值依次是 1,2,3，其 cap=len=3。
+
+s := arr[:] //初始化切片 s，是数组 arr 的引用。
+s := arr[startIndex:endIndex] //将 arr 中从下标startIndex到endIndex-1下的元素创建为一个新的切片。
+s := arr[startIndex:] //默认 endIndex 时将表示一直到arr的最后一个元素。
+s := arr[:endIndex] //默认 startIndex 时将表示从 arr 的第一个元素开始。
+
+```
+
+### 1.4.2 len() cap() append() copy() 
+
+> 切片是可索引的，并且可以由 len() 方法获取长度。
+>
+> 切片提供了计算容量的方法 cap() 可以测量切片最长可以达到多少。
+>
+> 向切片追加新元素的用 append 方法。
+>
+> 拷贝切片的用 copy 方法
+
+```go
+// 27.go
+package main
+
+import (
+        "fmt"
+)
+func main() {
+
+        var slice1 []int ; //
+        printSlice(slice1)
+        if( slice1  == nil){
+                fmt.Println("--->slice1 is nil")
+        }
+        slice1 = append(slice1,1)
+        slice1 = append(slice1,2)
+        printSlice(slice1)
+
+        slice2 := make([]int,3)
+        printSlice(slice2)
+        slice3 := make([]int,3,5)
+        printSlice(slice3)
+        slice3[0] = 1
+        slice3[1] = 2
+        slice3[2] = 3
+        slice3 = append(slice3,4)
+        slice3 = append(slice3,5)
+        slice3 = append(slice3,6)
+        printSlice(slice3)
+        fmt.Println(slice3[1],slice3[5])
+
+        printSlice2("slice3[:3]",slice3[:3])
+        printSlice2("slice3[2:5]",slice3[2:5])
+        printSlice2("slice3[3:]",slice3[3:])
+
+        slice4 := make([]int, len(slice3)-1, len(slice3))
+        copy(slice4,slice3)
+        printSlice2("slice4",slice4)
+
+}
+
+func printSlice(x []int){
+   fmt.Printf("len=%d cap=%d slice=%v\n",len(x),cap(x),x)
+}
+
+func printSlice2(msg string,x []int){
+   fmt.Printf("%s ---> len=%d cap=%d slice=%v\n",msg,len(x),cap(x),x)
+}
+
+
+```
+
+```shell
+[root@5d09d6b9f9d5 golang]# go run 27.go
+len=0 cap=0 slice=[]
+--->slice1 is nil
+len=2 cap=2 slice=[1 2]
+len=3 cap=3 slice=[0 0 0]
+len=3 cap=5 slice=[0 0 0]
+len=6 cap=10 slice=[1 2 3 4 5 6]
+2 6
+slice3[:3] ---> len=3 cap=10 slice=[1 2 3]
+slice3[2:5] ---> len=3 cap=8 slice=[3 4 5]
+slice3[3:] ---> len=3 cap=7 slice=[4 5 6]
+slice4 ---> len=5 cap=6 slice=[1 2 3 4 5]
+[root@5d09d6b9f9d5 golang]#
+```
 
 ## 1.5 函数
 
