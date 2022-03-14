@@ -1082,9 +1082,641 @@ func main() {
 
 ## 1.6 接口 
 
+>Go 语言提供了另外一种数据类型即接口，它把所有的具有共性的方法定义在一起，任何其他类型只要实现了这些方法就是实现了这个接口。
+
+```go
+//17.go
+package main
+
+import (
+    "fmt"
+)
+
+/* 定义接口 */
+type Phone interface {
+    call()
+}
+
+/* 定义结构体 */
+type NokiaPhone struct {
+}
+
+func (nokiaPhone NokiaPhone) call() {
+    fmt.Println("I am Nokia, I can call you!")
+}
+
+type IPhone struct {
+}
+
+func (iPhone IPhone) call() {
+    fmt.Println("I am iPhone, I can call you!")
+}
+
+func main() {
+    var phone Phone
+
+    phone = new(NokiaPhone)
+    phone.call()
+
+    phone = new(IPhone)
+    phone.call()
+
+}
+
+```
+
+```shell
+[root@5d09d6b9f9d5 golang]# go run 17.go
+I am Nokia, I can call you!
+I am iPhone, I can call you!
+[root@5d09d6b9f9d5 golang]#
+```
+
+
+
 ## 1.7 错误处理 
 
+> Go 语言通过内置的错误接口提供了非常简单的错误处理机制。
+
+```go
+//19.1.go
+package main
+
+import (
+    "fmt"
+)
+// 定义一个 DivideError 结构
+type DivideError struct {
+    dividee int
+    divider int
+}
+// 实现 `error` 接口
+func (de *DivideError) Error() string {
+    strFormat := `
+    Cannot proceed, the divider is zero.
+    dividee: %d
+    divider: 0
+`
+    return fmt.Sprintf(strFormat, de.dividee)
+}
+// 定义 `int` 类型除法运算的函数
+func Divide(varDividee int, varDivider int) (result int, errorMsg string) {
+    if varDivider == 0 {
+            dData := DivideError{
+                    dividee: varDividee,
+                    divider: varDivider,
+            }
+            errorMsg = dData.Error()
+            return
+    } else {
+            return varDividee / varDivider, ""
+    }
+}
+
+func main() {
+	// 正常情况
+    if result, errorMsg := Divide(100, 10); errorMsg == "" {
+            fmt.Println("100/10 = ", result)
+    }
+    // 当除数为零的时候会返回错误信息
+    if _, errorMsg := Divide(100, 0); errorMsg != "" {
+            fmt.Println("errorMsg is: ", errorMsg)
+    }
+
+}
+```
+
+```shell
+[root@5d09d6b9f9d5 golang]# go run 19.1.go
+100/10 =  10
+errorMsg is:
+    Cannot proceed, the divider is zero.
+    dividee: 100
+    divider: 0
+
+[root@5d09d6b9f9d5 golang]#
+```
+
+
+
 ## 1.8 并发
+
+### 1.8.1 goroutine
+
+> goroutine 语法格式：
+
+```go
+go 函数名( 参数列表 )
+```
+
+```go
+//20.go
+//多线程并发
+package main
+
+import (
+        "fmt"
+        "time"
+)
+
+func say(s string) {
+        for i := 0; i < 5; i++ {
+                time.Sleep(100 * time.Millisecond)
+                fmt.Println(s)
+        }
+}
+
+func main() {
+        go say("world")
+        say("hello")
+}
+
+```
+
+```shell
+[root@5d09d6b9f9d5 golang]# go run 20.go
+world
+hello
+hello
+world
+world
+hello
+hello
+world
+world
+hello
+[root@5d09d6b9f9d5 golang]#
+```
+
+### 1.8.2 通道（channel）
+
+> 通道（channel）是用来传递数据的一个数据结构。
+>
+> + 声明：`ch := make(chan int)`
+>
+> + 把 v 发送到通道 ch： `ch <- v `   
+>
+> + 从 ch 接收数据并把值赋给 v： `v := <-ch`
+
+```go
+//21.go
+package main
+import "fmt"
+
+func sum(s []int, c chan int) {
+        sum := 0
+        for _, v := range s {
+                sum += v
+        }
+        c <- sum // 把 sum 发送到通道 c
+}
+
+func main() {
+        s := []int{7, 2, 8, -9, 4, 0}
+
+        c := make(chan int) //声明通道
+        go sum(s[:len(s)/2], c)
+        go sum(s[len(s)/2:], c)
+        x, y := <-c, <-c // 从通道 c 中接收
+
+        fmt.Println(x, y, x+y)
+}
+```
+
+```shell
+[root@5d09d6b9f9d5 golang]# go run 21.go
+-5 17 12
+[root@5d09d6b9f9d5 golang]#
+```
+
+### 1.8.3 通道缓冲区
+
+> + 声明：`ch := make(chan int, 100)`
+
+```go
+//22.go
+package main
+
+import (
+        "fmt"
+)
+
+func fibonacci(n int, c chan int) {
+        x, y := 0, 1
+        for i := 0; i < n; i++ {
+                c <- x
+                x, y = y, x+y
+        }
+        close(c)
+}
+
+func main() {
+        c := make(chan int, 10)
+        go fibonacci(cap(c), c)
+        // range 函数遍历每个从通道接收到的数据，因为 c 在发送完 10 个
+        // 数据之后就关闭了通道，所以这里我们 range 函数在接收到 10 个数据
+        // 之后就结束了。如果上面的 c 通道不关闭，那么 range 函数就不
+        // 会结束，从而在接收第 11 个数据的时候就阻塞了。
+        for i := range c {
+                fmt.Println(i)
+        }
+}
+```
+
+```shell
+[root@5d09d6b9f9d5 golang]# go run 22.go
+0
+1
+1
+2
+3
+5
+8
+13
+21
+34
+[root@5d09d6b9f9d5 golang]#
+```
+
+### 1.8.3 遍历通道与关闭通道
+
+> 通过 range 关键字来实现遍历读取到的数据：`v, ok := <-ch`
+
+```go
+package main
+
+import (
+        "fmt"
+)
+
+func fibonacci(n int, c chan int) {
+        x, y := 0, 1
+        for i := 0; i < n; i++ {
+                c <- x
+                x, y = y, x+y
+        }
+        close(c)
+}
+
+func main() {
+        c := make(chan int, 10)
+        go fibonacci(cap(c), c)
+        // range 函数遍历每个从通道接收到的数据，因为 c 在发送完 10 个
+        // 数据之后就关闭了通道，所以这里我们 range 函数在接收到 10 个数据
+        // 之后就结束了。如果上面的 c 通道不关闭，那么 range 函数就不
+        // 会结束，从而在接收第 11 个数据的时候就阻塞了。
+        for i := range c {
+                fmt.Println(i)
+        }
+}
+```
+
+## 1.9 命令行参数
+
+### 1.9.1 os.Args
+
+```go
+//23.go
+package main
+
+import (
+    "fmt"
+    "os"
+)
+
+func main() {
+    fmt.Println("命令行的参数有", len(os.Args))
+    // 遍历 os.Args 切片，就可以得到所有的命令行输入参数值
+    for i, v := range os.Args {
+        fmt.Printf("args[%v]=%v\n", i, v)
+    }
+}
+```
+
+```shell
+[root@5d09d6b9f9d5 golang]# go run 23.go 123 45
+命令行的参数有 3
+args[0]=/tmp/go-build417455773/b001/exe/23
+args[1]=123
+args[2]=45
+[root@5d09d6b9f9d5 golang]#
+```
+
+### 1.9.2 flag包读取 
+
+```go
+//24.go
+//命令行参数： XXXXX -u root -p 123456 -P 3370 -h 127.0.0.1
+package main
+
+import (
+    "flag"
+    "fmt"
+)
+
+func main() {
+    // 定义几个变量，用于接收命令行的参数值
+    var user        string
+    var password    string
+    var host        string
+    var port        int
+    // &user 就是接收命令行中输入 -u 后面的参数值，其他同理
+    flag.StringVar(&user, "u", "root", "账号，默认为root")
+    flag.StringVar(&password, "p", "", "密码，默认为空")
+    flag.StringVar(&host, "h", "localhost", "主机名，默认为localhost")
+    flag.IntVar(&port, "P", 3306, "端口号，默认为3306")
+
+    // 解析命令行参数写入注册的flag里
+    flag.Parse()
+    // 输出结果
+    fmt.Printf("user：%v\npassword：%v\nhost：%v\nport：%v\n",
+        user, password, host, port)
+}
+```
+
+```shell
+[root@5d09d6b9f9d5 golang]# go run 24.go -u root -p 123456 -P 3370 -h 127.0.0.1
+user：root
+password：123456
+host：127.0.0.1
+port：3370
+[root@5d09d6b9f9d5 golang]#
+```
+
+# 2 应用使用
+
+## 2.1 数据库访问
+
+### 2.1.1 Mysql
+
+```go
+/*
+CREATE TABLE `person` (
+    `user_id` int(11) NOT NULL AUTO_INCREMENT,
+    `username` varchar(260) DEFAULT NULL,
+    `sex` varchar(260) DEFAULT NULL,
+    `email` varchar(260) DEFAULT NULL,
+    PRIMARY KEY (`user_id`)
+  ) ENGINE=InnoDB AUTO_INCREMENT=2 DEFAULT CHARSET=utf8;
+
+CREATE TABLE place (
+    country varchar(200),
+    city varchar(200),
+    telcode int
+)ENGINE=InnoDB AUTO_INCREMENT=2 DEFAULT CHARSET=utf8;
+
+insert into person(username, sex, email)values("stu001", "man", "stu01@qq.com") ;
+*/
+
+package main
+
+import (
+    "fmt"
+    _ "github.com/go-sql-driver/mysql"
+    "github.com/jmoiron/sqlx"
+        "encoding/json"
+)
+
+type Person struct {
+    UserId   int    `db:"user_id"`
+    Username string `db:"username"`
+    Sex      string `db:"sex"`
+    Email    string `db:"email"`
+}
+
+type Place struct {
+    Country string `db:"country"`
+    City    string `db:"city"`
+    TelCode int    `db:"telcode"`
+}
+
+
+func conn_mysql(username string, password string, host string, port string, tablespace string) *sqlx.DB {
+
+        //database, err := sqlx.Open("mysql", "root:Sq_123456@tcp(127.0.0.1:3306)/sq_iptables")
+    database, err := sqlx.Open("mysql", ""+username+":"+password+"@tcp("+host+":"+port+")/"+tablespace+"")
+    if err != nil {
+        fmt.Println("open mysql failed,", err)
+        return nil
+    }
+    //defer database.Close()
+    return database
+    //defer Db.Close()  // 注意这行代码要写在上面err判断的下面
+}
+
+func main() {
+
+        var Db =  conn_mysql("root","123456","127.0.0.1","3306","MobileOA")
+        defer Db.Close()
+    var person []Person
+    //err := Db.Select(&person, "select user_id, username, sex, email from person where user_id = ?", 2)
+    err := Db.Select(&person, "select user_id, username, sex, email from person")
+    if err != nil {
+        fmt.Println("exec failed, ", err)
+        return
+    }
+    fmt.Println("select succ:", person)
+
+        //转成json
+        jsonBytes, err := json.Marshal(person)
+        if err != nil {
+                fmt.Println(err)
+        }
+        fmt.Println(string(jsonBytes))
+}
+```
+
++ mysql_Transaction.go
+
+```go
+//mysql_Transaction.go
+package main
+
+    import (
+        "fmt"
+
+        _ "github.com/go-sql-driver/mysql"
+        "github.com/jmoiron/sqlx"
+    )
+
+    type Person struct {
+        UserId   int    `db:"user_id"`
+        Username string `db:"username"`
+        Sex      string `db:"sex"`
+        Email    string `db:"email"`
+    }
+
+    type Place struct {
+        Country string `db:"country"`
+        City    string `db:"city"`
+        TelCode int    `db:"telcode"`
+    }
+
+    var Db *sqlx.DB
+
+    func init() {
+        database, err := sqlx.Open("mysql", "root:123456@tcp(127.0.0.1:3306)/MobileOA")
+        if err != nil {
+            fmt.Println("open mysql failed,", err)
+            return
+        }
+        Db = database
+    }
+
+    func main() {
+        conn, err := Db.Begin()
+        if err != nil {
+            fmt.Println("begin failed :", err)
+            return
+        }
+
+        r, err := conn.Exec("insert into person(username, sex, email)values(?, ?, ?)", "stu001", "man", "stu01@qq.com")
+        if err != nil {
+            fmt.Println("exec failed, ", err)
+            conn.Rollback()
+            return
+        }
+        id, err := r.LastInsertId()
+        if err != nil {
+            fmt.Println("exec failed, ", err)
+            conn.Rollback()
+            return
+        }
+        fmt.Println("insert succ:", id)
+
+        r, err = conn.Exec("insert into person(username, sex, email)values(?, ?, ?)", "stu001", "man", "stu01@qq.com")
+        if err != nil {
+            fmt.Println("exec failed, ", err)
+            conn.Rollback()
+            return
+        }
+        id, err = r.LastInsertId()
+        if err != nil {
+            fmt.Println("exec failed, ", err)
+            conn.Rollback()
+            return
+        }
+        fmt.Println("insert succ:", id)
+
+        conn.Commit()
+    }
+
+```
+
+### 2.1.2 Postgres
+
+```go
+package main
+
+import (
+        //"database/sql" //通用的接口
+        "github.com/jmoiron/sqlx"
+        "fmt"
+        _ "github.com/bmizerany/pq" //必须要有相应的驱动
+)
+
+const (
+        host     = "localhost"
+        port     = 5432
+        user     = "postgres"
+        password = ""                   //你自己数据库的密码
+        dbname   = "genericdb" //创建的数据库
+)
+
+
+var db *sqlx.DB // 连接池对象
+var err error
+
+type product struct {
+        ProductNo string
+        Name      string
+        Price     float64
+}
+
+type productDao struct{}
+
+
+func main() {
+        pd := new(productDao)
+        err = pd.initDB()
+        if err != nil {
+                fmt.Println("initDB() failed. ")
+        }
+        defer pd.closeDB()
+        pd.doQueryAll()
+        //pd.doPreQueryByName("apple")
+}
+
+
+
+func (pd *productDao) initDB() (err error) {
+        pdqlInfo := fmt.Sprintf("host=%s port=%d user=%s "+
+                "password=%s dbname=%s sslmode=disable",
+                host, port, user, password, dbname)
+        //  pdqlInfo := "postgres:密码@tcp(127.0.0.1:5432)/test" // 用户名:密码@tcp(ip端口)/数据库名字，暂时出错
+        db, err = sqlx.Open("postgres", pdqlInfo) //Open(driverName 驱动名字, dataSourceName string 数据库信息)
+        // DB 代表一个具有零到多个底层连接的连接池，可以安全的被多个go程序同时使用
+        //这里的open函数只是验证参数是否合法，而不会创建和数据库的连接,也不会检查账号密码是否正确
+        if err != nil {
+                fmt.Println("Wrong args.Connected failed.")
+                return err
+        }
+        err = db.Ping()
+        if err != nil {
+                fmt.Println("Connected failed.")
+                return err
+        }
+        db.SetMaxOpenConns(20) //设置数据库连接池最大连接数
+        db.SetMaxIdleConns(10) //设置最大空闲连接数
+        fmt.Println("Successfully connected!")
+        return nil
+}
+
+
+func (pd *productDao) closeDB() (err error) {
+        return db.Close()
+}
+
+func (pd *productDao) doQueryAll() (error, []product) {
+        rows, err := db.Query(`Select * from product`)
+        if err != nil {
+                fmt.Println("Some amazing wrong happens in the process of Query.", err)
+                return err, []product{}
+        }
+        products := make([]product, 0)
+        defer rows.Close() //关闭连接
+        index := 0
+        var p product
+        for rows.Next() {
+                err := rows.Scan(&p.ProductNo, &p.Name, &p.Price)
+                products = append(products, p)
+                if err != nil { // 获得的都是字符串
+                        fmt.Println("Some amazing wrong happens in the process of queryAll.", err)
+                        return err, products
+                }
+                index++
+        }
+        if index > 0 {
+                fmt.Println("The data of table is as follow.")
+                for _, p := range products {
+                        fmt.Printf("%v %s %v\n", p.ProductNo, p.Name, p.Price)
+                }
+                fmt.Println("Successfully query ", len(products))
+                return nil, products
+        } else {
+                fmt.Println("No such data exists in database. ")
+                return fmt.Errorf("No such data exists in database. "), products
+        }
+}
+
+
+
+
+```
+
+
+
+
 
 
 
@@ -1092,7 +1724,7 @@ func main() {
 
 # 99 学习实例
 
-###  99.1 利用打包资源文件
+##  99.1 利用打包资源文件
 
 > fsman.go 
 
@@ -1162,4 +1794,117 @@ static/1.htm
 [root@localhost golang1111]#
 
 ```
+
+## 99.2 文件读取
+
+```go
+/* 19.go 逐行读取文件 */
+package main
+
+import (
+    "fmt"
+    "bufio"
+    "os"
+)
+
+func main() {
+    ReadLine2("19.txt")
+}
+
+func ReadLine2(filename string) {
+    f, _ := os.Open(filename)
+    defer f.Close()
+    r := bufio.NewReader(f)
+    for {
+        aa, err := readLine(r)
+        if err != nil {
+            break
+        }
+        fmt.Println(string(aa))
+    }
+}
+
+func readLine(r *bufio.Reader) (string, error) {
+    line, isprefix, err := r.ReadLine()
+    for isprefix && err == nil {
+        var bs []byte
+        bs, isprefix, err = r.ReadLine()
+        line = append(line, bs...)
+    }
+    return string(line), err
+}
+```
+
+## 99.3 通用查找，适合各种类型
+
+```go
+package main
+
+import (
+                "fmt"
+                "reflect"
+)
+
+//查找字符是否在数组中
+func InArray(obj interface{}, target interface{}) (bool) {
+        targetValue := reflect.ValueOf(target)
+        switch reflect.TypeOf(target).Kind() {
+        case reflect.Slice, reflect.Array:
+                for i := 0; i < targetValue.Len(); i++ {
+                        if targetValue.Index(i).Interface() == obj {
+                                return true
+                        }
+                }
+        case reflect.Map:
+                if targetValue.MapIndex(reflect.ValueOf(obj)).IsValid() {
+                        return true
+                }
+        }
+
+        return false
+}
+
+func main() {
+                aaa := "123"
+                bbb := []string{"234","34","56","1234"}
+                if ! InArray(aaa,bbb) {
+                        fmt.Println("hahaha")
+                } else {
+                        fmt.Println("no hah")
+                }
+}
+```
+
+```shell
+[root@5d09d6b9f9d5 golang]# go run  25.go
+hahaha
+[root@5d09d6b9f9d5 golang]#
+```
+
+## 99.4 当前时间
+
+```go
+// currentTime.go
+package main
+
+import (
+                "fmt"
+                "time"
+           )
+
+func main() {
+        timeStr := time.Now().Format("2006-01-02 15:04:05")
+        fmt.Println(timeStr)
+}
+```
+
+```sh 
+[root@5d09d6b9f9d5 golang]# go run currentTime.go
+2022-03-14 16:10:18
+[root@5d09d6b9f9d5 golang]#
+```
+
+
+
+# END
 
