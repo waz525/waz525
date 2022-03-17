@@ -1,5 +1,3 @@
-
-
 # 1 GO基础
 
 ## 1.1 基础环境
@@ -1647,8 +1645,6 @@ func main() {
         //pd.doPreQueryByName("apple")
 }
 
-
-
 func (pd *productDao) initDB() (err error) {
         pdqlInfo := fmt.Sprintf("host=%s port=%d user=%s "+
                 "password=%s dbname=%s sslmode=disable",
@@ -1714,7 +1710,933 @@ func (pd *productDao) doQueryAll() (error, []product) {
 
 ```
 
+### 2.1.3 Sqlite
 
+```go
+//sqlite_manger.go
+package main
+
+import (
+    "database/sql"
+        "fmt"
+        "time"
+    _ "github.com/mattn/go-sqlite3"
+)
+
+func main() {
+        // 打开/创建
+        db, err := sql.Open("sqlite3", "./my.db")
+
+        // 关闭
+        defer db.Close()
+
+
+        table := `
+            CREATE TABLE IF NOT EXISTS user (
+                    uid INTEGER PRIMARY KEY AUTOINCREMENT,
+                        name VARCHAR(128) NULL,
+                created DATE NULL
+                );
+                `
+        _, err = db.Exec(table)
+        if err != nil {
+                panic(err)
+                return ;
+        }
+
+        fmt.Println("CREATE TABLE Success!");
+
+
+    stmt, err := db.Prepare("INSERT INTO user(name,  created) values(?,?)")
+    if err != nil {
+        panic(err)
+    }
+    // res 为返回结果//
+    res, err := stmt.Exec("guoke", "2012-12-09")
+    if err != nil {
+        panic(err)
+    }
+
+    // 可以通过res取自动生成的id
+    id, err := res.LastInsertId()
+    if err != nil {
+        panic(err)
+    }
+        fmt.Println(id);
+
+        rows, err := db.Query("SELECT * FROM user")
+    if err != nil {
+          panic(err)
+     }
+    defer rows.Close()
+
+    for rows.Next() {
+        var uid int
+        var name string
+        var created time.Time
+        err = rows.Scan(&uid, &name,  &created)
+        if err != nil {
+          panic(err)
+        }
+
+        fmt.Println(uid)
+        fmt.Println(name)
+        fmt.Println(created)
+    }
+}
+```
+
+
+
+## 2.2 net/http
+
+### 2.2.1 简单的http响应
+
+```go
+//simpleHttpServer.go
+package main
+
+import (
+        "os"
+        "fmt"
+        "log"
+        "net/http"
+        "reflect"
+)
+
+/* 打印类的所有属性 */
+func GetClassAttribute(body interface{}) {
+                var prop []string
+                refType := reflect.TypeOf(body)
+        if refType.Kind() != reflect.Struct {
+                fmt.Println("Not a structure type.")
+        }
+        for i:=0;i<refType.NumField();i++ {
+                field := refType.Field(i)
+                if field.Anonymous {
+                        prop = append(prop, field.Name)
+                        for j := 0;j<field.Type.NumField();j++ {
+                                prop = append(prop, field.Type.Field(j).Name)
+                        }
+                        continue
+                }
+                prop = append(prop, field.Name)
+        }
+        fmt.Printf("%v\n", prop)
+}
+
+
+func sayhelloName(w http.ResponseWriter, r *http.Request) {
+   fmt.Println("打印Header参数列表：")
+   if len(r.Header) > 0 {
+      for k,v := range r.Header {
+         fmt.Printf("%s = %s\n", k, v[0])
+      }
+   }
+   fmt.Println("打印Form参数列表：")
+   r.ParseForm()
+   if len(r.Form) > 0 {
+      for k,v := range r.Form {
+         fmt.Printf("%s = %s\n", k, v[0])
+      }
+   }
+
+   fmt.Println("打印r.URL信息：")
+   fmt.Println("r.URL.Path: ",r.URL.Path)
+   fmt.Println("r.URL.RawPath: ",r.URL.RawPath)
+        GetClassAttribute(*r.URL)
+   fmt.Println("===================================================\n\n")
+
+        fmt.Fprintln(w, "hello world!")
+}
+
+func main() {
+                pwd, _ := os.Getwd()
+                fmt.Println("pwd: ",pwd)
+        http.HandleFunc("/", sayhelloName)
+
+        err := http.ListenAndServe(":12802", nil)
+
+        if err != nil {
+                log.Fatal("ListenAndServe:", err)
+
+        }
+}
+
+```
+
+### 2.2.1 解析json的post请求体参数
+
+```go
+//simpleHttpServer2.go
+/*
+解析Content-Type为 application/json的post请求体参数
+*/
+package main
+
+import (
+        "encoding/json"
+        "fmt"
+        "log"
+        "net/http"
+//      "io/ioutil"
+)
+
+type person_struct struct {
+                FirstName string `json:"FirstName"`
+                LastName  string `json:"LastName"`
+}
+
+/*
+//读取json传递数据  data:'{"FirstName":"yd","LastName":"123456"}',
+func test(rw http.ResponseWriter, req *http.Request) {
+        fmt.Println("method:", req.Method)
+
+        if req.Method != "POST" && req.Method != "post" {
+                fmt.Fprintln(rw, "aaaa")
+                return
+        }
+
+    var t person_struct
+
+    body, err := ioutil.ReadAll(req.Body)
+    if err != nil {
+        fmt.Printf("read body err, %v\n", err)
+        return
+    }
+    fmt.Println("req.Body: ", string(body) )
+
+    //decoder := json.NewDecoder(req.Body)
+    //err = decoder.Decode(&t)
+    err = json.Unmarshal(body,&t)
+    if err != nil {
+        panic(err)
+    }
+
+    jsonBytes, err := json.Marshal(t)
+    if err != nil {
+       fmt.Println(err)
+    }
+    fmt.Println(string(jsonBytes))
+
+    rw.Header().Set("Access-Control-Allow-Origin", "*")
+    rw.Header().Set("Content-Type", "application/json;charset=utf-8")
+    fmt.Fprintln(rw, string(jsonBytes) )
+
+
+
+*/
+
+
+func test(rw http.ResponseWriter, req *http.Request) {
+                fmt.Println("method:", req.Method)
+
+                if req.Method != "POST" && req.Method != "post" {
+                                fmt.Fprintln(rw, "aaaa")
+                                return
+                }
+
+        var t person_struct
+
+        t.FirstName = req.FormValue("FirstName")
+        t.LastName = req.FormValue("LastName")
+        //转成json
+        jsonBytes, err := json.Marshal(t)
+    if err != nil {
+           fmt.Println(err)
+    }
+    fmt.Println(string(jsonBytes))
+
+        rw.Header().Set("Access-Control-Allow-Origin", "*")
+    rw.Header().Set("Content-Type", "application/json;charset=utf-8")
+        fmt.Fprintln(rw, string(jsonBytes) )
+}
+
+func indexpage(rw http.ResponseWriter, req *http.Request) {
+        fmt.Fprintln(rw,"This is Index Page")
+}
+
+func main() {
+        http.HandleFunc("/test", test)
+        http.HandleFunc("/",indexpage)
+        log.Fatal(http.ListenAndServe(":12802", nil))
+}
+
+```
+
+### 2.2.3 静态资源与参数读取
+
+```go
+//
+/*
+参数读取
+*/
+package main
+
+import (
+    "fmt"
+    "net/http"
+)
+
+func main() {
+        // http://x.x.x.x:12800/?name=234&email=123@123.com
+    http.HandleFunc("/", func (w http.ResponseWriter, r *http.Request) {
+        fmt.Fprintln(w, "Welcome to my website!")
+                fmt.Fprintln(w, r.URL.Query().Get("name"))
+                fmt.Fprintln(w, r.FormValue("email"))
+    })
+
+        // http://x.x.x.x:12800/static/
+    fs := http.FileServer(http.Dir("."))
+    http.Handle("/static/", http.StripPrefix("/static/", fs))
+
+    http.ListenAndServe(":12800", nil)
+}
+
+```
+### 2.2.4 多端口侦听
+```go
+//simpleHttpServer4.go
+/*
+多端口侦听
+*/
+package main
+
+import (
+        "fmt"
+        "net/http"
+)
+
+func index1(w http.ResponseWriter, r *http.Request) {
+        _, _ = w.Write([]byte("This is server 1 ."))
+}
+
+func index2(w http.ResponseWriter, r *http.Request) {
+    _, _ = w.Write([]byte("This is server 2 ."))
+}
+
+
+func http_server1() {
+                server1 := http.NewServeMux()
+                server1.HandleFunc("/", index1)
+                err := http.ListenAndServe(":12801", server1)
+                if err != nil {
+                        fmt.Printf("http.ListenAndServe()函数执行错误,错误为:%v\n", err)
+                        return
+                }
+                fmt.Println("Listen 12801 ...")
+}
+
+func http_server2() {
+        server2 := http.NewServeMux()
+        server2.HandleFunc("/", index2)
+                err := http.ListenAndServe(":12802", server2)
+        if err != nil {
+            fmt.Printf("http.ListenAndServe()函数执行错误,错误为:%v\n", err)
+            return
+        }
+                fmt.Println("Listen 12802 ...")
+
+}
+
+func main() {
+                //以多线程方式开启server1
+                go http_server1()
+                //主进程开户server2, 主进程必须常驻运行，否则程序退出
+                http_server2()
+}
+
+```
+
+### 2.2.5 CGI包使用
+
+```go
+//simpleHttpServer5.go
+/*
+CGI包使用
+*/
+package main
+
+import (
+        "fmt"
+        "log"
+        "net/http"
+        "net/http/cgi"
+)
+
+
+func test(rw http.ResponseWriter, req *http.Request) {
+                fmt.Println(req.URL.Path)
+                handler := new(cgi.Handler)
+                /*
+                /var/www/cgi-bin/test.sh :
+
+                #!/bin/sh
+                printf "Content-Type: text/plain;charset=utf-8\n\n"
+                env
+
+                */
+                handler.Path = "/var/www/cgi-bin/test.sh"
+                fmt.Println("handler.Path: ",handler.Path)
+                handler.Dir = "/var/www/cgi-bin/"
+                handler.ServeHTTP(rw, req)
+}
+
+func indexpage(rw http.ResponseWriter, req *http.Request) {
+                fmt.Println(req.URL.Path)
+        fmt.Fprintln(rw,"This is Index Page")
+}
+
+func main() {
+        http.HandleFunc("/cgi-bin/test", test)
+        http.HandleFunc("/",indexpage)
+        log.Fatal(http.ListenAndServe(":12802", nil))
+}
+
+```
+
+### 2.2.6 http.Request成员参数
+
+```go
+// sayhello project sayhello.go
+package main
+
+import (
+        "fmt"
+        "log"
+        "net/http"
+        "strings"
+)
+
+func sayhello(w http.ResponseWriter, r *http.Request) {
+        // r.ParseForm()       //解析参数，默认是不会解析的
+        //这些信息是输出到服务器端的打印信息
+        fmt.Println("Request解析")
+        //HTTP方法
+        fmt.Println("method", r.Method)
+        // RequestURI是被客户端发送到服务端的请求的请求行中未修改的请求URI
+        fmt.Println("RequestURI", r.RequestURI)
+        //URL类型,下方分别列出URL的各成员
+        fmt.Println("URL_scheme", r.URL.Scheme)
+        fmt.Println("URL_opaque", r.URL.Opaque)
+        fmt.Println("URL_user", r.URL.User.String())
+        fmt.Println("URL_host", r.URL.Host)
+        fmt.Println("URL_path", r.URL.Path)
+        fmt.Println("URL_RawQuery", r.URL.RawQuery)
+        fmt.Println("URL_Fragment", r.URL.Fragment)
+        //协议版本
+        fmt.Println("proto", r.Proto)
+        fmt.Println("protomajor", r.ProtoMajor)
+        fmt.Println("protominor", r.ProtoMinor)
+        //HTTP请求的头域
+        for k, v := range r.Header {
+                // fmt.Println("Header key:" + k)
+                for _, vv := range v {
+                        fmt.Println("header key:" + k + "  value:" + vv)
+                }
+        }
+        //判断是否multipart方式
+        is_multipart := false
+        for _, v := range r.Header["Content-Type"] {
+                if strings.Index(v, "multipart/form-data") != -1 {
+                        is_multipart = true
+                }
+        }
+        //解析body
+        if is_multipart == true {
+                r.ParseMultipartForm(128)
+                fmt.Println("解析方式:ParseMultipartForm")
+        } else {
+                r.ParseForm()
+                fmt.Println("解析方式:ParseForm")
+        }
+        //body内容长度
+        fmt.Println("ContentLength", r.ContentLength)
+        //是否在回复请求后关闭连接
+        fmt.Println("Close", r.Close)
+        //HOSt
+        fmt.Println("host", r.Host)
+        //form
+        fmt.Println("Form", r.Form)
+        //postform
+        fmt.Println("PostForm", r.PostForm)
+        /*
+        //MultipartForm
+        fmt.Println("MultipartForm", r.MultipartForm)
+        //解析MultipartForm内的文件
+        files := r.MultipartForm.File
+        for k, v := range files {
+                fmt.Println(k)
+                for _, vv := range v {
+                        fmt.Println(k + ":" + vv.Filename)
+                }
+        }
+        */
+        //该请求的来源地址
+        fmt.Println("RemoteAddr", r.RemoteAddr)
+
+        fmt.Println("\n=====================================================\n")
+        fmt.Fprintf(w, "hello astaxie!") //这个写入到w的是输出到客户端的
+}
+
+func main() {
+        http.HandleFunc("/", sayhello)
+        err := http.ListenAndServe(":12800", nil)
+        if err != nil {
+                log.Fatal("ListenAndServe:", err)
+        }
+}
+
+```
+
+### 2.2.7 类httpd服务功能
+
+> 以demo方式运行，支持静态html、cgi-bin。
+
+```go
+//goHttpd.go
+package main
+
+import (
+        "flag"  //命令行参数
+        "fmt"
+        "log"
+        "strings"
+        "os"
+        "strconv"
+        "path"
+        "net/http"
+        "net/http/cgi"
+)
+
+var CigBinPrefix string
+var CigBinPath   string
+var FileStaticPath string
+var ServerPort          string
+var FileStaticPrefix string
+
+//默认页面处理，用于支持cgi
+func DealWithRequestForCgi(rw http.ResponseWriter, req *http.Request) {
+                url_path := req.URL.Path
+                log.Println("Receive "+req.Method+" from "+req.RemoteAddr+" ,URL.Path: "+url_path)
+                //判断是否是cgi-bin请求
+                if strings.Index(url_path, CigBinPrefix) == 0 {
+                                handler := new(cgi.Handler)
+                                handler.Path = CigBinPath+"/"+url_path[len(CigBinPrefix)-1:]
+                                log.Println("handler.Path: "+handler.Path)
+                                handler.Dir = CigBinPath
+                                handler.ServeHTTP(rw, req)
+                } else {
+                                http.NotFound(rw, req)
+                }
+}
+
+//开启Http服务
+func StartHttpService() {
+                http.HandleFunc("/", DealWithRequestForCgi)
+
+                //设置静态文件路径
+                fs := http.FileServer(http.Dir(FileStaticPath))
+                http.Handle(FileStaticPrefix, http.StripPrefix(FileStaticPrefix, fs))
+
+                log.Println("Server Listen on "+ServerPort+" ...")
+                //开启http侦听
+                err := http.ListenAndServe(":"+ServerPort, nil)
+                if err != nil {
+                                log.Println("ListenAndServe Error:", err)
+                }
+}
+
+func init() {
+                pid := os.Getpid()
+            log.SetPrefix("[PID:"+strconv.Itoa(pid)+"] ")
+                log.SetFlags(log.Ldate | log.Ltime | log.Lshortfile)
+                //log.SetFlags(log.Ldate | log.Ltime )
+}
+
+
+func main() {
+                flag.StringVar(&ServerPort, "p", "18000", "The Port for Httpd .")
+                flag.StringVar(&FileStaticPath, "w", "/var/www/html/" , "The Path of WebSit .")
+                flag.StringVar(&FileStaticPrefix, "s", "/myweb/", "The URL of WebSit .")
+                flag.StringVar(&CigBinPath, "c", "/var/www/cgi-bin/", "The Path of Cgi-bin ." )
+                flag.StringVar(&CigBinPrefix, "b", "/myweb/cgi-bin/", "The URL Path for Cgi-bin .")
+                flag.Parse()
+
+                if os.Getppid() != 1 {
+
+                                createLogFile := func (fileName string) (fd *os.File, err error) {
+                                                dir := path.Dir(fileName)
+                                                if _, err = os.Stat(dir); err != nil && os.IsNotExist(err) {
+                                                                if err = os.MkdirAll(dir, 0755); err != nil {
+                                                                                fmt.Printf("Start-Daemon: create dir: %s failed, err is: %v\n", dir, err)
+                                                                                return
+                                                                }
+                                                }
+                                                if fd, err = os.OpenFile(fileName,os.O_RDWR|os.O_CREATE|os.O_APPEND,os.ModeAppend) ; err != nil {
+                                                //if fd, err = os.Create(fileName); err != nil {
+                                                                fmt.Printf("Start-Daemon: open log file: %s failed, err is: %v\n", fileName, err)
+                                                                return
+                                                }
+                                                return
+                                }
+
+                                logFd, err := createLogFile("/var/log/goHttpd.log")
+                                if err != nil {
+                                                return
+                                }
+                                defer logFd.Close()
+
+                                cmdName := os.Args[0]
+                                newProc, err := os.StartProcess(cmdName, os.Args, &os.ProcAttr{Files: []*os.File{logFd, logFd, logFd}})
+                                if err != nil {
+                                                log.Println("Start-Deamon: start process: ", cmdName," failed, err is: ", err)
+                                                return
+                                }
+                                log.Println("Start-Deamon: run in daemon success, pid:", newProc.Pid)
+                                return
+                }
+
+                log.Println("Config ServerPort:", ServerPort)
+                log.Println("Config FileStaticPrefix:", FileStaticPrefix)
+                log.Println("Config FileStaticPath:", FileStaticPath )
+                log.Println("Config CigBinPrefix:", CigBinPrefix )
+                log.Println("Config CigBinPath:", CigBinPath)
+                //log.Println("Config :",)
+
+                StartHttpService()
+}
+
+```
++ goHttpd.service 服务配置文件
+```shell
+#把hxcl.service放到 /usr/lib/systemd/system 目录下 /usr/lib/systemd/system
+#命令
+#systemctl start hxcl.service 启动
+#systemctl stop hxcl.service 停止
+#systemctl restart hxcl.service 重启
+#systemctl enable hxcl.service 添加为系统自启动服务
+
+
+
+#[Unit]部分主要是对这个服务的说明，内容包括Description和After，Description
+#用于描述服务，After用于描述服务类别
+[Unit]
+Description=CBI Service
+After=network.service
+
+#[Service]部分是服务的关键，是服务的一些具体运行参数的设置，这里Type=forking
+#是后台运行的形式，PIDFile为存放PID的文件路径，ExecStart为服务的具体运行命令，
+#ExecReload为重启命令，ExecStop为停止命令，PrivateTmp=True表示给服务分配独
+#立的临时空间，注意：[Service]部分的启动、重启、停止命令全部要求使用绝对路径，使
+#用相对路径则会报错！
+#StandardOutput=null 是将程序业务日志输出到空，也可以指定文件，或者交给journal处理
+
+[Service]
+#Type=forking
+User=root
+Group=root
+WorkingDirectory=/home/golang/http/
+ExecStart=/home/golang/http/goHttpd >/dev/null 2>&1 &
+#SuccessExitStatus=143
+ExecStop=/usr/bin/kill -9 $MAINPID
+Environment=HOME=/home/golang/http/ PWD=/home/golang/http/
+StandardOutput=null
+#StandardOutput=/tmp/services/logs/iBot/iBot-run.log
+
+#[Install]部分是服务安装的相关设置，可设置为多用户的
+[Install]
+WantedBy=multi-user.target
+
+
+```
+
+### 2.2.8 Http Client
+
+```go
+//http_client.go
+package main
+
+import (
+    "bytes"
+//    "encoding/json"
+    "io"
+    "io/ioutil"
+    "net/http"
+    "net/url"
+    "time"
+    "fmt"
+    "strings"
+)
+
+// 发送GET请求
+// url：         请求地址
+// response：    请求返回的内容
+func Get(url string) string {
+
+    // 超时时间：5秒
+    client := &http.Client{Timeout: 5 * time.Second}
+    resp, err := client.Get(url)
+    if err != nil {
+        panic(err)
+    }
+    defer resp.Body.Close()
+    var buffer [512]byte
+    result := bytes.NewBuffer(nil)
+    for {
+        n, err := resp.Body.Read(buffer[0:])
+        result.Write(buffer[0:n])
+        if err != nil && err == io.EOF {
+            break
+        } else if err != nil {
+            panic(err)
+        }
+    }
+
+    return result.String()
+}
+
+// 发送POST请求
+// url：         请求地址
+// data：        POST请求提交的数据
+// contentType： 请求体格式，如：application/json
+// content：     请求放回的内容
+func Post(url string, data url.Values, contentType string) string {
+
+    // 超时时间：5秒
+    client := &http.Client{Timeout: 5 * time.Second}
+    //jsonStr, _ := json.Marshal(data)
+    resp, err := client.Post(url, contentType, strings.NewReader(data.Encode()))
+    if err != nil {
+        panic(err)
+    }
+    defer resp.Body.Close()
+
+    result, _ := ioutil.ReadAll(resp.Body)
+    return string(result)
+}
+
+func main() {
+        fmt.Println(Get("http://www.01happy.com/demo/accept.php?id=1"))
+        fmt.Println("-----------------------------")
+//      data := map[string]string{"France": "Paris", "Italy": "Rome", "Japan": "Tokyo", "India": "New delhi"}
+        data := url.Values{"app_id":{"238b2213-a8ca-42d8-8eab-1f1db3c50ed6"}, "mobile_tel":{"13794227450"}}
+        fmt.Println(Post("http://www.01happy.com/demo/accept.php",data,"application/x-www-form-urlencoded"))
+}
+
+```
+
+## 2.3 Socket
+
+### 2.3.1 Server
+
+```go
+//server.go
+package main
+
+import (
+        "bufio"
+        "fmt"
+        "flag"
+        "log"
+        "net"
+)
+
+func handleConnection(conn net.Conn) {
+        defer conn.Close()
+        fmt.Fprintf(conn, "Input q to quit !\r\n")
+        for {
+                data, err := bufio.NewReader(conn).ReadString('\n')
+                if err != nil {
+                        log.Fatal(err)
+                }
+                fmt.Print(conn.RemoteAddr()," ---> ",string(data))
+                if string(data)[0] == 'q' {
+                                break
+                }
+                fmt.Fprintf(conn, string(data))
+        }
+}
+
+func main() {
+                var port string
+                flag.StringVar(&port, "p", "3371",  "Port for Server !")
+                flag.Parse()
+
+                fmt.Println("Listen on "+port+" ... ")
+        l, err := net.Listen("tcp", ":"+port)
+        if err != nil {
+                log.Fatal(err)
+        }
+        defer l.Close()
+        for {
+                conn, err := l.Accept()
+                if err != nil {
+                        log.Fatal(err)
+                }
+                go handleConnection(conn)
+        }
+}
+
+```
+
+### 2.3.2 Client
+
+```go
+//client.go
+package main
+
+import (
+    "bufio"
+    "fmt"
+    "log"
+    "net"
+)
+
+func main() {
+    conn, err := net.Dial("tcp", ":3371")
+    if err != nil {
+        log.Fatal(err)
+    }
+    defer conn.Close()
+    fmt.Fprintf(conn, "hello\n")
+    res, err := bufio.NewReader(conn).ReadString('\n')
+    if err != nil {
+        log.Fatal(err)
+    }
+    fmt.Println(string(res))
+    fmt.Fprintf(conn, "Jimmy!\n")
+}
+
+```
+
+## 2.4 日志模块
+
+### 2.4.1 log模块
+
+```go
+//test2.go
+package main
+
+import (
+    "log"
+)
+
+func init() {
+    log.SetPrefix("TRACE: ")
+    log.SetFlags(log.Ldate | log.Ltime | log.Lshortfile)
+    log.SetFlags(log.Ldate | log.Ltime )
+}
+
+func main() {
+    // Println writes to the standard logger.
+    log.Println("message")
+
+    // Fatalln is Println() followed by a call to os.Exit(1).
+//    log.Fatalln("fatal message")
+
+    // Panicln is Println() followed by a call to panic().
+//    log.Panicln("panic message")
+}
+
+```
+
+```shell
+[root@5d09d6b9f9d5 seelog]# go run test2.go
+TRACE: 2022/03/17 13:30:16 message
+[root@5d09d6b9f9d5 seelog]#
+```
+
+### 2.4.2 seelog直接模式
+
+```go
+//test1.go
+package main
+
+import (
+    seelog "github.com/cihub/seelog"
+)
+
+func main() {
+                seelog.Error("seelog error")
+                seelog.Info("seelog info")
+                seelog.Debug("seelog debug")
+                seelog.Flush() //输出
+}
+```
+
+```shell
+[root@5d09d6b9f9d5 seelog]# go run test1.go
+1647524182010802520 [Error] seelog error
+1647524182010826318 [Info] seelog info
+1647524182010831618 [Debug] seelog debug
+[root@5d09d6b9f9d5 seelog]#
+```
+
+### 2.4.3 seelog配置文件模式
+
+```go
+ TestSeelog.go
+// TestSeelog.go
+package main
+
+import (
+    seelog "github.com/cihub/seelog"
+)
+
+func main() {
+    logger, err := seelog.LoggerFromConfigAsFile("./logconfig.xml")
+
+    if err != nil {
+        seelog.Critical("err parsing config log file", err)
+        return
+    }
+    seelog.ReplaceLogger(logger)
+
+    seelog.Error("seelog error")
+    seelog.Info("seelog info")
+    seelog.Debug("seelog debug")
+        seelog.Flush()
+}
+```
+
++ logconfig.xml
+
+```xml
+<seelog levels="trace,debug,info,warn,error,critical">
+    <outputs formatid="main">
+        <!-- 对控制台输出的Log按级别分别用颜色显示。6种日志级别我仅分了三组颜色，如果想每个级别都用不同颜色则需要简单修改即可 -->
+        <filter levels="trace,debug,info">
+            <console formatid="colored-default"/>
+        </filter>
+        <filter levels="warn">
+            <console formatid="colored-warn"/>
+        </filter>
+        <filter levels="error,critical">
+            <console formatid="colored-error"/>
+        </filter>
+
+        <!-- 将日志输出到磁盘文件，按文件大小进行切割日志，单个文件最大100M，最多5个日志文件 -->
+        <rollingfile formatid="main" type="size" filename="./log/default.log" maxsize="104857600" maxrolls="5" />
+    </outputs>
+    <formats>
+        <format id="colored-default"  format="[%Date %Time] [%LEVEL] [%File:%Line] %Msg%n"/>
+        <format id="colored-warn"  format="[%Date %Time] [%LEVEL] [%File:%Line] %Msg%n"/>
+        <format id="colored-error"  format="[%Date %Time] [%LEVEL] [%File:%Line] %Msg%n"/>
+        <format id="main" format="[%Date %Time] [%LEVEL] [%File:%Line] %Msg%n"/>
+    </formats>
+</seelog>
+```
+
++ 输出结果
+
+```bash
+[root@5d09d6b9f9d5 seelog]# go run TestSeelog.go
+[2022-03-17 13:39:33] [ERROR] [TestSeelog.go:18] seelog error
+[2022-03-17 13:39:33] [INFO] [TestSeelog.go:19] seelog info
+[2022-03-17 13:39:33] [DEBUG] [TestSeelog.go:20] seelog debug
+[root@5d09d6b9f9d5 seelog]#
+```
 
 
 
@@ -1903,6 +2825,953 @@ func main() {
 2022-03-14 16:10:18
 [root@5d09d6b9f9d5 golang]#
 ```
+
+## 99.5 map2json
+
+```go
+//map2json.go
+package main
+
+import (
+    "encoding/json"
+    "fmt"
+)
+
+func main() {
+    var s =  map[string]interface{}{}
+    var a  = map[string]interface{}{"b":11111}
+
+    s["nihao"] = map[string]interface{}{"nihao":"dddd","bb":a}
+    res,_ := json.Marshal(s)
+    resString := string(res)
+    fmt.Println(resString)
+}//
+```
+
+```shell
+[root@5d09d6b9f9d5 golang]# go run map2json.go
+{"nihao":{"bb":{"b":11111},"nihao":"dddd"}}
+[root@5d09d6b9f9d5 golang]#
+```
+
+## 99.6 变量类型
+
+```go
+//type_switch.go
+package main
+
+import "fmt"
+
+func main() {
+         var x interface{}
+
+         switch i := x.(type) {
+                case nil:
+                 fmt.Println("x 的类型 :%T",i)
+                case int:
+                 fmt.Println("x 是 int 型")
+                case float64:
+                 fmt.Println("x 是 float64 型")
+                case func(int) float64:
+                 fmt.Println("x 是 func(int) 型")
+                case bool, string:
+                 fmt.Println("x 是 bool 或 string 型" )
+                default:
+                 fmt.Println("未知型")
+         }
+}
+```
+
+## 99.7 执行shell命令
+
+```go
+//testUUID.go
+package main
+
+import (
+    "fmt"
+    "log"
+    "os/exec"
+)
+
+func main() {
+    out, err := exec.Command("uuidgen | sed 's/-//g' | cut -b 1-24").Output()
+    if err != nil {
+        log.Fatal(err)
+    }
+    fmt.Printf("%s", out)
+}
+```
+
+## 99.8 应用程序信息bininfo
+
+```go
+//test_bininfo.go
+package main
+
+import (
+        "flag"
+        "fmt"
+        "os"
+        "BinInfo"
+)
+
+func main() {
+        v := flag.Bool("v", false, "show bin info")
+        flag.Parse()
+        if *v {
+                _, _ = fmt.Fprint(os.Stderr, BinInfo.StringifyMultiLine())
+                os.Exit(1)
+        }
+
+        fmt.Println("my app running...")
+        fmt.Println("bye...")
+}
+
+```
+
+```shell
+[root@5d09d6b9f9d5 golang]# cat ./test_bininfo.sh
+#!/usr/bin/env bash
+
+#set -x
+
+# 将 log 原始字符串中的单引号替换成双引号
+Version="1.0.1"
+# 检查源码在git commit 基础上，是否有本地修改，且未提交的内容
+Author="Worden"
+# 获取当前时间
+BuildTime=`date +'%Y-%m-%d %H:%M:%S'`
+# 获取 Go 的版本
+BuildGoVersion=`go version`
+
+# 将以上变量序列化至 LDFlags 变量中
+LDFlags=" \
+    -X 'BinInfo.Version=${Version}' \
+    -X 'BinInfo.Author=${Author}' \
+    -X 'BinInfo.BuildTime=${BuildTime}' \
+    -X 'BinInfo.BuildGoVersion=${BuildGoVersion}' \
+"
+
+#echo "$LDFlags"
+
+ROOT_DIR=`pwd`
+
+go build -ldflags "$LDFlags" test_bininfo.go
+
+./test_bininfo -v
+
+
+[root@5d09d6b9f9d5 golang]# ./test_bininfo.sh
+
+test_bininfo Version Info:
+        Version: 1.0.1
+        Author: Worden
+        BuildTime: 2022-03-17 13:27:17
+        GoVersion: go version go1.15.14 linux/amd64
+
+[root@5d09d6b9f9d5 golang]#
+```
+
+## 99.9 Demo方式（fork）
+
+```go
+// mySvr.go
+package main
+
+import (
+                "os"
+                "fmt"
+                "time"
+
+)
+
+
+
+func main() {
+      // when os.Getppid() != 1, not in daemon
+           if os.Getppid() != 1 {
+
+                           cmdName := os.Args[0]
+            newProc, err := os.StartProcess(cmdName, os.Args, &os.ProcAttr{})
+            if err != nil {
+                    fmt.Println("Start-Deamon: start process: %s failed, err is: %v", cmdName, err)
+                    return
+            }
+
+            fmt.Println("Start-Deamon: run in daemon success, pid: %v", newProc.Pid)
+            return
+        }
+
+        for {
+                // will write "test" to file
+                fmt.Println("test")
+                time.Sleep(time.Duration(3) * time.Second)
+        }
+}
+
+```
+
+* mySvr.service
+
+```shell
+#把文件hxcl.service放到 /usr/lib/systemd/system 目录下 /usr/lib/systemd/system
+#命令
+#systemctl start hxcl.service 启动
+#systemctl stop hxcl.service 停止
+#systemctl restart hxcl.service 重启
+#systemctl enable hxcl.service 添加为系统自启动服务
+
+
+
+#[Unit]部分主要是对这个服务的说明，内容包括Description和After，Description
+#用于描述服务，After用于描述服务类别
+[Unit]
+Description=CBI Service
+After=network.service
+
+#[Service]部分是服务的关键，是服务的一些具体运行参数的设置，这里Type=forking
+#是后台运行的形式，PIDFile为存放PID的文件路径，ExecStart为服务的具体运行命令，
+#ExecReload为重启命令，ExecStop为停止命令，PrivateTmp=True表示给服务分配独
+#立的临时空间，注意：[Service]部分的启动、重启、停止命令全部要求使用绝对路径，使
+#用相对路径则会报错！
+#StandardOutput=null 是将程序业务日志输出到空，也可以指定文件，或者交给journal处理
+
+[Service]
+#Type=forking
+User=root
+Group=root
+WorkingDirectory=/home/golang/fork/
+ExecStart=cd /home/golang/fork/ && ./mySvr >/dev/null 2>&1 &
+#SuccessExitStatus=143
+ExecStop=/usr/bin/kill -9 $MAINPID
+Environment=HOME=/home/golang/fork/ PWD=/home/golang/fork/
+StandardOutput=null
+#StandardOutput=/tmp/services/logs/iBot/iBot-run.log
+
+#[Install]部分是服务安装的相关设置，可设置为多用户的
+[Install]
+WantedBy=multi-user.target
+```
+
+# Utils 自定义库
+
+## + CommUtil.go ：通用工具
+
+```go
+/*
+通用工具
+1 常用类型
+2 常用函数
+*/
+package Utils
+
+import (
+                "fmt"
+                seelog "github.com/cihub/seelog"
+                "os"
+                "io"
+                "time"
+                "bytes"
+                "strings"
+                "strconv"
+                "reflect"
+                "net/http"
+                "os/exec"
+                "io/ioutil"
+                "encoding/json"
+)
+
+/* 获取绝对路径 */
+func GetRealPath(path string) string {
+                if strings.Index(path,"/") == 0  {
+                                return path
+                } else {
+                                pwd,_ := os.Getwd()
+                                return pwd+"/"+path
+                }
+}
+
+/* 字符串转整型 */
+func Atoi(s string) int {
+                v, err := strconv.Atoi(s)
+                if err != nil {
+                                seelog.Error("Atoi Error: ",err) ; seelog.Flush()
+                                return 0
+                }
+                return v
+}
+
+/* 整型转字符型 */
+func Itoa( v int ) string {
+                return strconv.Itoa(v)
+}
+
+
+/* 执行shell命令 */
+func RunShellCmd(cmd string) string{
+                //fmt.Println("Running Shell cmd:" , cmd)
+                result, err := exec.Command("/bin/sh", "-c", cmd).Output()
+                if err != nil {
+                                seelog.Error("Exec Command Error: ",err) ; seelog.Flush()
+                }
+                return strings.TrimSpace(string(result))
+}
+
+/* 判断文件是否存在  存在返回 true 不存在返回false */
+func IsFileExist(filename string) bool {
+                var exist = true
+                if _, err := os.Stat(filename); os.IsNotExist(err) {
+                                exist = false
+                }
+                return exist
+}
+
+/* 删除文件 */
+func DeleteFile(filename string) bool {
+        if IsFileExist(filename) {
+                err := os.Remove(filename)
+                if err == nil {
+                        return true
+                }
+        }
+        return false
+}
+
+/* 读取文本文件内容 */
+func GetFileContent( filepath string) string {
+                bytes, err := ioutil.ReadFile(filepath)
+
+                if err != nil {
+                                seelog.Error("read file: ",filepath,", error:", err) ; seelog.Flush()
+                                return ""
+                }
+                return string(bytes)
+}
+
+/* 写入文件 */
+func WriteFileContent(filepath, content string) {
+                var d1 = []byte(content)
+                err := ioutil.WriteFile(filepath, d1, 0666) //写入文件(字节数组)
+                if err != nil {
+                                seelog.Error("Write file: ",filepath,", error:", err) ; seelog.Flush()
+                }
+}
+
+
+/* 将字符串转换成二维字符串数组 */
+func Str2List(rows string, line_fd string, str_fd string) [][]string {
+                rst := [][]string{}
+                lines := strings.Split(rows, line_fd)
+                for ind := 0 ; ind<len(lines) ;ind++ {
+                                rst = append(rst, strings.Split(strings.TrimSpace(lines[ind]), str_fd ))
+                }
+                return rst
+}
+
+/* 打印二维数组 */
+func PrintList(rows [][]string ) {
+                for ind := 0 ; ind<len(rows) ;ind++ {
+                                line :=  rows[ind]
+                                for j := 0 ; j <len(line) ; j++ {
+                                                fmt.Printf(""+strconv.Itoa(j)+":"+line[j]+"\t")
+                                }
+                                fmt.Println()
+                }
+}
+
+/* 从二维数组中查找对应数据 */
+func FindListCell(rows [][]string, key string , f_index int, r_index int) string {
+                for ind := 0 ; ind<len(rows) ;ind++ {
+                                line :=  rows[ind]
+                                if len(line) > f_index && len(line) > r_index  {
+                                                if line[f_index] == key {
+                                                                return line[r_index]
+                                                }
+                                }
+                }
+                return ""
+}
+
+
+/* 查找字符是否在数组中 */
+func InArray(obj interface{}, target interface{}) (bool) {
+                targetValue := reflect.ValueOf(target)
+                switch reflect.TypeOf(target).Kind() {
+                                case reflect.Slice, reflect.Array:
+                                        for i := 0; i < targetValue.Len(); i++ {
+                                                if targetValue.Index(i).Interface() == obj {
+                                                                return true
+                                                }
+                                        }
+                                case reflect.Map:
+                                                if targetValue.MapIndex(reflect.ValueOf(obj)).IsValid() {
+                                                                return true
+                                }
+                }
+
+                return false
+}
+
+/* 打印类的所有属性 */
+func GetClassAttribute(body interface{}) {
+                var prop []string
+                refType := reflect.TypeOf(body)
+                if refType.Kind() != reflect.Struct {
+                                fmt.Println("Not a structure type.")
+                }
+                for i:=0;i<refType.NumField();i++ {
+                                field := refType.Field(i)
+                                if field.Anonymous {
+                                                prop = append(prop, field.Name)
+                                                for j := 0;j<field.Type.NumField();j++ {
+                                                                prop = append(prop, field.Type.Field(j).Name)
+                                                }
+                                                continue
+                                }
+                                prop = append(prop, field.Name)
+                }
+                fmt.Printf("%v\n", prop)
+}
+
+/* 将Struct转成字符串 */
+func Struct2String(v interface{}) string {
+                res, _ := json.Marshal(v)
+                return string(res)
+}
+
+
+/* 发送GET请求 */
+func HttpGet(url string) string {
+        // 超时时间：5秒
+        client := &http.Client{Timeout: 5 * time.Second}
+        resp, err := client.Get(url)
+        if err != nil {
+                        seelog.Error("HttpGet Error:",err) ; seelog.Flush()
+                        return ""
+        }
+        defer resp.Body.Close()
+        var buffer [512]byte
+        result := bytes.NewBuffer(nil)
+        for {
+                n, err := resp.Body.Read(buffer[0:])
+                result.Write(buffer[0:n])
+                if err != nil && err == io.EOF {
+                        break
+                } else if err != nil {
+                        seelog.Error("HttpGet Error:",err) ; seelog.Flush()
+                        return ""
+                }
+        }
+
+        return result.String()
+}
+
+/* 发送POST请求 */
+func HttpPost(url string, data string, contentType string) string {
+        // 超时时间：5秒
+        client := &http.Client{Timeout: 5 * time.Second}
+        //jsonStr, _ := json.Marshal(data)
+        resp, err := client.Post(url, contentType, strings.NewReader(data))
+        if err != nil {
+                seelog.Error("HttpPost Error:",err) ; seelog.Flush()
+                return ""
+        }
+        defer resp.Body.Close()
+
+        result, _ := ioutil.ReadAll(resp.Body)
+        return string(result)
+}
+```
+
+## + Gpool.go
+
+```go
+package Utils
+
+import (
+        "sync"
+)
+
+type Pool struct {
+        queue chan int
+        wg      *sync.WaitGroup
+}
+
+func NewPool(size int) *Pool {
+        if size <= 0 {
+                size = 1
+        }
+        return &Pool{
+                queue: make(chan int, size),
+                wg:     &sync.WaitGroup{},
+        }
+}
+
+func (p *Pool) Add(delta int) {
+        for i := 0; i < delta; i++ {
+                p.queue <- 1
+        }
+        for i := 0; i > delta; i-- {
+                <-p.queue
+        }
+        p.wg.Add(delta)
+}
+
+func (p *Pool) Done() {
+        <-p.queue
+        p.wg.Done()
+}
+
+func (p *Pool) Wait() {
+        p.wg.Wait()
+}
+```
+
+## + IniUtil.go - ini配置读取
+
+```go
+package Utils
+
+import (
+        "gopkg.in/ini.v1"
+)
+
+type IniParser struct {
+        conf_reader *ini.File // config reader
+}
+
+type IniParserError struct {
+        error_info string
+}
+
+func (e *IniParserError) Error() string { return e.error_info }
+
+func (this *IniParser) Load(config_file_name string) error {
+        conf, err := ini.Load(config_file_name)
+        if err != nil {
+                this.conf_reader = nil
+                return err
+        }
+        this.conf_reader = conf
+        return nil
+}
+
+func (this *IniParser) GetString(section string, key string) string {
+        if this.conf_reader == nil {
+                return ""
+        }
+
+        s := this.conf_reader.Section(section)
+        if s == nil {
+                return ""
+        }
+
+        return s.Key(key).String()
+}
+
+func (this *IniParser) GetInt32(section string, key string) int32 {
+        if this.conf_reader == nil {
+                return 0
+        }
+
+        s := this.conf_reader.Section(section)
+        if s == nil {
+                return 0
+        }
+
+        value_int, _ := s.Key(key).Int()
+
+        return int32(value_int)
+}
+
+func (this *IniParser) GetUint32(section string, key string) uint32 {
+        if this.conf_reader == nil {
+                return 0
+        }
+
+        s := this.conf_reader.Section(section)
+        if s == nil {
+                return 0
+        }
+
+        value_int, _ := s.Key(key).Uint()
+
+        return uint32(value_int)
+}
+
+func (this *IniParser) GetInt64(section string, key string) int64 {
+        if this.conf_reader == nil {
+                return 0
+        }
+
+        s := this.conf_reader.Section(section)
+        if s == nil {
+                return 0
+        }
+
+        value_int, _ := s.Key(key).Int64()
+        return value_int
+}
+
+func (this *IniParser) GetUint64(section string, key string) uint64 {
+        if this.conf_reader == nil {
+                return 0
+        }
+
+        s := this.conf_reader.Section(section)
+        if s == nil {
+                return 0
+        }
+
+        value_int, _ := s.Key(key).Uint64()
+        return value_int
+}
+
+func (this *IniParser) GetFloat32(section string, key string) float32 {
+        if this.conf_reader == nil {
+                return 0
+        }
+
+        s := this.conf_reader.Section(section)
+        if s == nil {
+                return 0
+        }
+
+        value_float, _ := s.Key(key).Float64()
+        return float32(value_float)
+}
+
+func (this *IniParser) GetFloat64(section string, key string) float64 {
+        if this.conf_reader == nil {
+                return 0
+        }
+
+        s := this.conf_reader.Section(section)
+        if s == nil {
+                return 0
+        }
+
+        value_float, _ := s.Key(key).Float64()
+        return value_float
+}
+```
+
+## + SSHUtil.go ：ssh客户端
+
+```go
+package Utils
+
+import (
+    "net"
+    "fmt"
+    "bytes"
+        "time"
+    "golang.org/x/crypto/ssh"
+        seelog "github.com/cihub/seelog"
+)
+
+type SSHMethod struct {
+                session         *ssh.Session
+}
+
+//创建ssh链接
+func (this *SSHMethod) SSHConnect( user, password, host string, port int ) (bool,error) {
+    var (
+        auth         []ssh.AuthMethod
+        addr         string
+        clientConfig *ssh.ClientConfig
+        client       *ssh.Client
+        session      *ssh.Session
+        err          error
+    )
+    // get auth method
+    auth = make([]ssh.AuthMethod, 0)
+    auth = append(auth, ssh.Password(password))
+
+    hostKeyCallbk := func(hostname string, remote net.Addr, key ssh.PublicKey) error {
+            return nil
+    }
+
+    clientConfig = &ssh.ClientConfig{
+        User:               user,
+        Auth:               auth,
+         Timeout:           5 * time.Second,
+        HostKeyCallback:    hostKeyCallbk,
+    }
+
+    // connet to ssh
+    addr = fmt.Sprintf( "%s:%d", host, port )
+
+    if client, err = ssh.Dial( "tcp", addr, clientConfig ); err != nil {
+        return false, err
+    }
+
+    // create session
+    if session, err = client.NewSession(); err != nil {
+                seelog.Critical("SSHConnect to ",host," Failed, ",err); seelog.Flush()
+        return false,err
+    }
+        this.session = session
+        return true,nil
+}
+
+//执行命令并返回结果
+func (this *SSHMethod) RunShellCmd(cmd string) string {
+
+        if this.session == nil {
+                        seelog.Critical("session is null .") ; seelog.Flush()
+                        return ""
+        }
+
+    var stdOut, stdErr bytes.Buffer
+
+    this.session.Stdout = &stdOut
+    this.session.Stderr = &stdErr
+
+    this.session.Run(cmd)
+    return stdOut.String()
+
+}
+
+//关闭链接
+func (this *SSHMethod) Close() {
+                if this.session != nil {
+                                //seelog.Info("Close session") ; seelog.Flush()
+                                this.session.Close()
+                }
+}
+
+```
+
+## + DBUtil.go ：数据库访问类，支持mysql、pg、sqlite
+
+```go
+/*
+数据库操作类
+*/
+package Utils
+
+import (
+        "fmt"
+        "encoding/json"
+        _ "github.com/go-sql-driver/mysql" //mysql驱动
+        _ "github.com/bmizerany/pq"       //postgresql驱动
+        _ "github.com/mattn/go-sqlite3"   //sqlite3驱动
+        "github.com/jmoiron/sqlx"
+//      "database/sql"
+        seelog "github.com/cihub/seelog"
+)
+
+//数据库配置参数
+type DBMethed struct {
+                DBType          string
+                Host            string
+                Port            string
+                Username        string
+                Password        string
+                Database        string
+                DBFile          string
+                DBHandle        *sqlx.DB
+}
+
+
+
+//连接数据库
+func (this *DBMethed) ConnDataBase() {
+        //默认是mysql数据库
+        dbInfo := ""+this.Username+":"+this.Password+"@tcp("+this.Host+":"+this.Port+")/"+this.Database+"" ;
+        //postgres 数据库
+        if this.DBType == "postgres" {
+                dbInfo = fmt.Sprintf("host=%s port=%s user=%s password=%s dbname=%s sslmode=disable",this.Host, this.Port, this.Username, this.Password, this.Database )
+        }
+        //sqlite3数据库
+        if this.DBType == "sqlite3" {
+                dbInfo = this.DBFile
+        }
+
+        DBHandle, err := sqlx.Open(this.DBType, dbInfo)
+        if err != nil {
+                seelog.Critical("Open "+this.DBType+" failed,", err) ; seelog.Flush()
+                return
+        }
+
+        DBHandle.SetMaxOpenConns(200)
+        DBHandle.SetMaxIdleConns(20)
+        this.DBHandle = DBHandle
+}
+
+//关闭数据库连接
+func (this *DBMethed) Close() {
+        if this.DBHandle != nil {
+                this.DBHandle.Close()
+        }
+}
+
+
+//查询并转换成Map
+func (this *DBMethed) Query(sqlString string)  []map[string]interface{} {
+        tableData := make([]map[string]interface{}, 0)
+        if this.DBHandle == nil {
+                this.ConnDataBase()
+        }
+        stmt, err := this.DBHandle.Prepare(sqlString)
+        if err != nil {
+                errinfo := make(map[string]interface{})
+                errinfo["ERROR"] = err.Error()
+                tableData = append(tableData, errinfo)
+                return tableData
+
+        }
+        defer stmt.Close()
+        rows, err := stmt.Query()
+        if err != nil {
+                errinfo := make(map[string]interface{})
+                errinfo["ERROR"] = err.Error()
+                tableData = append(tableData, errinfo)
+                return tableData
+
+        }
+        defer rows.Close()
+        columns, err := rows.Columns()
+        if err != nil {
+                errinfo := make(map[string]interface{})
+                errinfo["ERROR"] = err.Error()
+                tableData = append(tableData, errinfo)
+                return tableData
+        }
+        count := len(columns)
+        values := make([]interface{}, count)
+        valuePtrs := make([]interface{}, count)
+        for rows.Next() {
+                for i := 0; i < count; i++ {
+                        valuePtrs[i] = &values[i]
+                }
+                rows.Scan(valuePtrs...)
+                entry := make(map[string]interface{})
+                for i, col := range columns {
+                        var v interface{}
+                        val := values[i]
+                        b, ok := val.([]byte)
+                        if ok {
+                                v = string(b)
+                        } else {
+                                v = val
+                        }
+                        entry[col] = v
+                }
+                tableData = append(tableData, entry)
+        }
+        return tableData ;
+}
+
+//查询结果转成Json字符串
+func (this *DBMethed) Map2Json(tableData []map[string]interface{}, oneFlag bool) string {
+        rst := ""
+        if oneFlag && len(tableData) > 0 {
+                jsonData, err := json.Marshal(tableData[0])
+                if err != nil {
+                        return "{\"ERROR\":\""+err.Error()+"\"}"
+                }
+                rst = string(jsonData)
+        } else {
+                jsonData, err := json.Marshal(tableData)
+                if err != nil {
+                        return "{\"ERROR\":\""+err.Error()+"\"}"
+                }
+                rst = string(jsonData)
+        }
+        return rst
+}
+
+//普通查询数据
+func (this *DBMethed) Query2Json(sql string) string {
+        return this.Map2Json(this.Query(sql), false)
+
+}
+
+func (this *DBMethed) Query2JsonOne(sql string) string {
+        return this.Map2Json(this.Query(sql), true)
+}
+
+//根据id查询单条数据
+func (this *DBMethed) QueryById(TableName, ObjectID string) string {
+        sql := "select * from "+TableName+" where id = '"+ObjectID+"' "
+        seelog.Debug("Query Sql:", sql) ; seelog.Flush()
+        return this.Map2Json(this.Query(sql), true)
+}
+
+//查询数据量
+func (this *DBMethed) QueryCount(TableName, WhereStr string) string {
+        sql := "select count(1) as COUNT from "+TableName+ " where "+WhereStr ;
+        seelog.Debug("QueryCount Sql:", sql); seelog.Flush()
+        return this.Map2Json(this.Query(sql), true)
+
+}
+
+
+
+//执行sql，包括insert,update,delete,create,alter,drop等
+func (this *DBMethed) ExecSql(sql string) string {
+        if this.DBHandle == nil {
+                this.ConnDataBase()
+        }
+        seelog.Debug("Exec Sql:", sql); seelog.Flush()
+        stmt,err := this.DBHandle.Prepare(sql)
+        if err != nil {
+                return "{\"ERROR\":\""+err.Error()+"\"}"
+        }
+        rst, err := stmt.Exec()
+        if err != nil {
+                return "{\"ERROR\":\""+err.Error()+"\"}"
+        }
+        num, err := rst.RowsAffected()
+        if err != nil {
+                return "{\"ERROR\":\""+err.Error()+"\"}"
+        }
+        return "{\"ChageLine\":"+Itoa(num)+"}"
+}
+
+//查询表字段，返回字段数组
+func (this *DBMethed) QueryFields(TableName string) string {
+
+        if this.DBHandle == nil {
+                this.ConnDataBase()
+        }
+
+        sqlString := "select * from "+TableName+" where 1 = 2 "
+
+        seelog.Debug(sqlString) ; seelog.Flush();
+        stmt, err := this.DBHandle.Prepare(sqlString)
+        if err != nil {
+                return "{\"ERROR\":\""+err.Error()+"\"}"
+        }
+        defer stmt.Close()
+        rows, err := stmt.Query()
+        if err != nil {
+                return "{\"ERROR\":\""+err.Error()+"\"}"
+        }
+        defer rows.Close()
+        columns, err := rows.Columns()
+        if err != nil {
+                return "{\"ERROR\":\""+err.Error()+"\"}"
+        }
+
+        var rst map[string][]string
+        rst = make(map[string][]string)
+        rst["Fields"] = columns
+
+        fmt.Println(rst)
+        jsonData, err := json.Marshal(rst)
+        if err != nil {
+                return "{\"ERROR\":\""+err.Error()+"\"}"
+        }
+        return string(jsonData)
+
+}
+```
+
+
 
 
 
