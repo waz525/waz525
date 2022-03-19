@@ -3,6 +3,28 @@
 ## 1.1 基础环境
 
 + 安装包下载地址为： https://golang.google.cn/dl/
++ 设置env变量
+
+```shell
+WORK_DIR=$(cd $(dirname $0) && pwd )
+echo $WORK_DIR
+
+# 解决go get 超时问题
+go env -w GOPROXY="https://goproxy.cn"
+# 解决gopath无效的问题，不使用go.mod
+go env -w GO111MODULE="auto"
+go env -w GOPATH="${WORK_DIR}/go_lib"
+
+```
+
+> **GO111MODULE**
+>
+> + GO111MODULE=off，无模块支持，go命令行将不会支持module功能，寻找依赖包的方式将会沿用旧版本那种通过vendor目录或者GOPATH模式来查找。
+> + GO111MODULE=on，模块支持，go命令行会使用modules，而一点也不会去GOPATH目录下查找。
+> + GO111MODULE=auto，默认值，go命令行将会根据当前目录来决定是否启用module功能。这种情况下可以分为两种情形：
+>   （1）当前目录在GOPATH/src之外且该目录包含go.mod文件，开启模块支持。
+>   （2）当前文件在包含go.mod文件的目录下面
+
 + 编写下面的内容到hello.go，执行`go run hello.go`
 
 ```go
