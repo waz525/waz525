@@ -2660,7 +2660,260 @@ func main() {
 [root@5d09d6b9f9d5 seelog]#
 ```
 
+# 3 Gin框架
 
+> - Gin是一个golang的微框架，封装比较优雅，API友好，源码注释比较明确，具有快速灵活，容错方便等特点
+> - 对于golang而言，web框架的依赖要远比Python，Java之类的要小。自身的`net/http`足够简单，性能也非常不错
+> - 借助框架开发，不仅可以省去很多常用的封装带来的时间，也有助于团队的编码风格和形成规范
+
+## 3.1 安装Gin
+
+1. 首先需要安装Go（需要1.10+版本），然后可以使用下面的Go命令安装Gin。
+
+> go get -u github.com/gin-gonic/gin
+
+2. 将其导入您的代码中：
+
+> import "github.com/gin-gonic/gin"
+
+3. （可选）导入net/http。例如，如果使用常量，则需要这样做http.StatusOK。
+
+> import "net/http"
+
+4. helloword
+
+```go
+//01.go
+package main
+
+import (
+    "net/http"
+    "github.com/gin-gonic/gin"
+)
+
+func main() {
+    // 1.创建路由
+   r := gin.Default()
+   // 2.绑定路由规则，执行的函数
+   // gin.Context，封装了request和response
+   r.GET("/", func(c *gin.Context) {
+      c.String(http.StatusOK, "hello World!")
+   })
+   // 3.监听端口，默认在8080
+   // Run("里面不指定端口号默认为8080")
+   r.Run(":8000")
+}
+
+```
+
+## 3.2 Gin路由
+
+1. 基本路由
+
+> - gin 框架中采用的路由库是基于httprouter做的
+> - 地址为：https://github.com/julienschmidt/httprouter
+>
+
+```go
+//02.go
+package main
+
+import (
+    "net/http"
+
+    "github.com/gin-gonic/gin"
+)
+
+func main() {
+    r := gin.Default()
+    r.GET("/", func(c *gin.Context) {
+        c.String(http.StatusOK, "hello word")
+    })
+    r.POST("/xxxpost",func(c *gin.Context) {
+        c.String(http.StatusOK, "hello word, post")
+    })
+    r.PUT("/xxxput")
+    //监听端口默认为8080
+    r.Run(":8000")
+}
+```
+
+2. Restful风格的API
+> gin支持Restful风格的API: 即Representational State Transfer的缩写。直接翻译的意思是"表现层状态转化"，是一种互联网应用程序的API设计理念：URL定位资源，用HTTP描述操作
+
+3. API参数
+> 可以通过Context的Param方法来获取API参数，例如：localhost:8000/user/worden/info
+> 
+```go
+//03.go
+package main
+
+import (
+    "net/http"
+    "strings"
+
+    "github.com/gin-gonic/gin"
+)
+
+func main() {
+    r := gin.Default()
+    r.GET("/user/:name/*action", func(c *gin.Context) {
+        name := c.Param("name")
+        action := c.Param("action")
+        //截取/
+        action = strings.Trim(action, "/")
+        c.String(http.StatusOK, name+" is "+action)
+    })
+    //默认为监听8080端口
+    r.Run(":8000")
+}
+```
+
+```shell
+[root@Docker1 golang]# curl http://192.168.1.241:8000/user/worden/info
+worden is info
+```
+
+4. URL参数
+
+> - API ? name=zs，URL参数可以通过DefaultQuery()或Query()方法获取
+> - DefaultQuery()若参数不村则，返回默认值，Query()若不存在，返回空串
+
+```go
+//04.go 
+package main
+
+import (
+    "fmt"
+    "net/http"
+
+    "github.com/gin-gonic/gin"
+)
+
+func main() {
+    r := gin.Default()
+    r.GET("/user", func(c *gin.Context) {
+        //指定默认值
+        //http://localhost:8080/user 才会打印出来默认的值
+        name := c.DefaultQuery("name", "枯藤")
+        c.String(http.StatusOK, fmt.Sprintf("hello %s", name))
+    })
+    r.Run(":8000")
+}
+```
+
+```shell
+[root@Docker1 golang]# curl http://192.168.1.241:8000/user
+hello 枯藤
+[root@Docker1 golang]# curl http://192.168.1.241:8000/user?name=worden
+hello worden
+```
+
+5. 表单参数
+
+> - 表单传输为post请求，http常见的传输格式为四种：
+>   - application/json
+>   - application/x-www-form-urlencoded
+>   - application/xml
+>   - multipart/form-data
+> - 表单参数可以通过PostForm()方法获取，该方法默认解析的是x-www-form-urlencoded或from-data格式的参数
+
+```html
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta http-equiv="X-UA-Compatible" content="ie=edge">
+    <title>Document</title>
+</head>
+<body>
+    <form action="http://192.168.1.241:8000/form" method="post" action="application/x-www-form-urlencoded">
+        用户名：<input type="text" name="username" placeholder="请输入你的用户名">  <br>
+        密&nbsp;&nbsp;&nbsp;码：<input type="password" name="userpassword" placeholder="请输入你的密码">  <br>
+        <input type="submit" value="提交">
+    </form>
+</body>
+</html>
+```
+
+```go
+//05.go
+package main
+
+import (
+    "fmt"
+    "net/http"
+
+    "github.com/gin-gonic/gin"
+)
+
+func main() {
+    r := gin.Default()
+    r.POST("/form", func(c *gin.Context) {
+        types := c.DefaultPostForm("type", "post")
+        username := c.PostForm("username")
+        password := c.PostForm("userpassword")
+        // c.String(http.StatusOK, fmt.Sprintf("username:%s,password:%s,type:%s", username, password, types))
+        c.String(http.StatusOK, fmt.Sprintf("username:%s,password:%s,type:%s", username, password, types))
+    })
+    r.Run(":8000")
+}
+```
+
+```shell
+[root@Docker1 golang]# curl 'http://192.168.1.241:8000/form'   -H 'Content-Type: application/x-www-form-urlencoded'   -d 'username=user1&userpassword=admin1'
+username:user1,password:admin1,type:post
+```
+
+6. 文件单个上传
+
+> - multipart/form-data格式用于文件上传
+> - gin文件上传与原生的net/http方法类似，不同在于gin把原生的request封装到c.Request中
+
+```html
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta http-equiv="X-UA-Compatible" content="ie=edge">
+    <title>Document</title>
+</head>
+<body>
+    <form action="http://192.168.1.241:8080/upload" method="post" enctype="multipart/form-data">
+          上传文件:<input type="file" name="file" >
+          <input type="submit" value="提交">
+    </form>
+</body>
+</html>
+```
+
+```go
+//06.go
+package main
+
+import (
+    "net/http"
+    "github.com/gin-gonic/gin"
+)
+
+func main() {
+    r := gin.Default()
+    //限制上传最大尺寸
+    r.MaxMultipartMemory = 8 << 20
+    r.POST("/upload", func(c *gin.Context) {
+        file, err := c.FormFile("file")
+        if err != nil {
+            c.String(500, "上传图片出错")
+        }
+        // c.JSON(200, gin.H{"message": file.Header.Context})
+        c.SaveUploadedFile(file, file.Filename)
+        c.String(http.StatusOK, file.Filename)
+    })
+    r.Run()
+}
+```
 
 
 
