@@ -2905,7 +2905,7 @@ func main() {
     r.POST("/upload", func(c *gin.Context) {
         file, err := c.FormFile("file")
         if err != nil {
-            c.String(500, "上传图片出错")
+            c.String(500, "上传文件出错")
         }
         // c.JSON(200, gin.H{"message": file.Header.Context})
         c.SaveUploadedFile(file, file.Filename)
@@ -2914,6 +2914,1039 @@ func main() {
     r.Run()
 }
 ```
+
+7. 上传特定文件
+
+>有的上传文件需要限制上传文件的类型以及上传文件的大小，但是gin框架暂时没有这些函数(也有可能是我没找到)，因此基于原生的函数写了一个可以限制大小以及文件类型的上传函数
+
+```go
+//07.go
+package main
+
+import (
+    "log"
+    "net/http"
+    "github.com/gin-gonic/gin"
+)
+
+func main() {
+    r := gin.Default()
+    r.POST("/upload", func(c *gin.Context) {
+        _, headers, err := c.Request.FormFile("file")
+        if err != nil {
+            log.Printf("Error when try to get file: %v", err)
+        }
+        //headers.Size 获取文件大小
+        if headers.Size > 1024*1024*2 {
+            c.String(http.StatusOK,"文件太大了")
+            return
+        }
+        //headers.Header.Get("Content-Type")获取上传文件的类型
+        if headers.Header.Get("Content-Type") != "image/png" {
+            c.String(http.StatusOK,"只允许上传png图片")
+            return
+        }
+        c.SaveUploadedFile(headers, "./video/"+headers.Filename)
+        c.String(http.StatusOK, headers.Filename)
+    })
+    r.Run()
+}
+```
+
+8. 上传多个文件
+
+```html
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta http-equiv="X-UA-Compatible" content="ie=edge">
+    <title>Document</title>
+</head>
+<body>
+    <form action="http://192.168.1.241:8080/upload" method="post" enctype="multipart/form-data">
+          上传文件:<input type="file" name="files" multiple>
+          <input type="submit" value="提交">
+    </form>
+</body>
+</html>
+```
+
+```go
+//08.go
+package main
+
+import (
+   "github.com/gin-gonic/gin"
+   "net/http"
+   "fmt"
+)
+
+// gin的helloWorld
+
+func main() {
+   // 1.创建路由
+   // 默认使用了2个中间件Logger(), Recovery()
+   r := gin.Default()
+   // 限制表单上传大小 8MB，默认为32MB
+   r.MaxMultipartMemory = 8 << 20
+   r.POST("/upload", func(c *gin.Context) {
+      form, err := c.MultipartForm()
+      if err != nil {
+         c.String(http.StatusBadRequest, fmt.Sprintf("get err %s", err.Error()))
+      }
+      // 获取所有文件
+      files := form.File["files"]
+      // 遍历所有文件
+      for _, file := range files {
+         // 逐个存
+         if err := c.SaveUploadedFile(file, file.Filename); err != nil {
+            c.String(http.StatusBadRequest, fmt.Sprintf("upload err %s", err.Error()))
+            return
+         }
+      }
+      c.String(http.StatusOK, fmt.Sprintf("upload ok %d files", len(files)))
+   })
+   //默认端口号是8080
+   r.Run()
+}
+```
+
+9. routes group是为了管理一些相同的URL
+
+```go
+//09.go 
+package main
+
+import (
+   "github.com/gin-gonic/gin"
+   "fmt"
+)
+
+// gin的helloWorld
+
+func main() {
+   // 1.创建路由
+   // 默认使用了2个中间件Logger(), Recovery()
+   r := gin.Default()
+   // 路由组1 ，处理GET请求
+   v1 := r.Group("/v1")
+   // {} 是书写规范
+   {
+      v1.GET("/login", login)
+      v1.GET("submit", submit)
+   }
+   v2 := r.Group("/v2")
+   {
+      v2.POST("/login", login)
+      v2.POST("/submit", submit)
+   }
+   r.Run(":8000")
+}
+
+func login(c *gin.Context) {
+   name := c.DefaultQuery("name", "jack")
+   c.String(200, fmt.Sprintf("hello %s\n", name))
+}
+
+func submit(c *gin.Context) {
+   name := c.DefaultQuery("name", "lily")
+   c.String(200, fmt.Sprintf("hello %s\n", name))
+}
+```
+
+```shell
+[root@Docker1 gin]# curl http://192.168.1.241:8000/v1/login
+hello jack
+[root@Docker1 gin]# curl http://192.168.1.241:8000/v2/login
+404 page not found
+[root@Docker1 gin]# curl http://192.168.1.241:8000/v2/login -X POST
+hello jack
+```
+
+10. 路由拆分
+
+```go
+//10.go
+package main
+
+import (
+    "net/http"
+    "fmt"
+    "github.com/gin-gonic/gin"
+)
+
+func helloHandler(c *gin.Context) {
+    c.JSON(http.StatusOK, gin.H{
+        "message": "Hello www.topgoer.com!",
+    })
+}
+
+func setupRouter() *gin.Engine {
+    r := gin.Default()
+    r.GET("/topgoer", helloHandler)
+    return r
+}
+
+func main() {
+    r := setupRouter()
+    if err := r.Run(); err != nil {
+        fmt.Println("startup service failed, err:%v\n", err)
+    }
+}
+```
+
+## 3.3 Gin 数据解析和绑定
+
+1. Json 数据解析和绑定
+
+```go
+//11.go
+package main
+
+import (
+   "github.com/gin-gonic/gin"
+   "net/http"
+)
+
+// 定义接收数据的结构体
+type Login struct {
+   // binding:"required"修饰的字段，若接收为空值，则报错，是必须字段
+   User    string `form:"username" json:"user" uri:"user" xml:"user" binding:"required"`
+   Pssword string `form:"password" json:"password" uri:"password" xml:"password" binding:"required"`
+}
+
+func main() {
+   // 1.创建路由
+   r := gin.Default()
+   // JSON绑定
+   r.POST("loginJSON", func(c *gin.Context) {
+      // 声明接收的变量
+      var json Login
+      // 将request的body中的数据，自动按照json格式解析到结构体
+      if err := c.ShouldBindJSON(&json); err != nil {
+         // 返回错误信息
+         // gin.H封装了生成json数据的工具
+         c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+         return
+      }
+      // 判断用户名密码是否正确
+      if json.User != "root" || json.Pssword != "admin" {
+         c.JSON(http.StatusBadRequest, gin.H{"status": "304"})
+         return
+      }
+      c.JSON(http.StatusOK, gin.H{"status": "200"})
+   })
+   r.Run(":8000")
+}
+```
+
+```shell
+[root@Docker1 gin]# curl http://192.168.1.241:8000/loginJSON -H "Content-Type: application/json"  -d '{"user":"root", "password":"admin"}'  -X POST
+{"status":"200"}
+[root@Docker1 gin]# curl http://192.168.1.241:8000/loginJSON -H "Content-Type: application/json"  -d '{"user":"root", "password":"admin1"}'  -X POST
+{"status":"304"}
+```
+
+2. 表单数据解析和绑定
+
+```html
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta http-equiv="X-UA-Compatible" content="ie=edge">
+    <title>Document</title>
+</head>
+<body>
+    <form action="http://192.168.1.241:8000/loginForm" method="post" enctype="application/x-www-form-urlencoded">
+        用户名<input type="text" name="username"><br>
+        密码<input type="password" name="password">
+        <input type="submit" value="提交">
+    </form>
+</body>
+</html>
+```
+
+```go
+//12.go
+package main
+
+import (
+    "net/http"
+
+    "github.com/gin-gonic/gin"
+)
+
+// 定义接收数据的结构体
+type Login struct {
+    // binding:"required"修饰的字段，若接收为空值，则报错，是必须字段
+    User    string `form:"username" json:"user" uri:"user" xml:"user" binding:"required"`
+    Pssword string `form:"password" json:"password" uri:"password" xml:"password" binding:"required"`
+}
+
+func main() {
+    // 1.创建路由
+    r := gin.Default()
+    // JSON绑定
+    r.POST("/loginForm", func(c *gin.Context) {
+        // 声明接收的变量
+        var form Login
+        // Bind()默认解析并绑定form格式
+        // 根据请求头中content-type自动推断
+        if err := c.Bind(&form); err != nil {
+            c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+            return
+        }
+        // 判断用户名密码是否正确
+        if form.User != "root" || form.Pssword != "admin" {
+            c.JSON(http.StatusBadRequest, gin.H{"status": "304"})
+            return
+        }
+        c.JSON(http.StatusOK, gin.H{"status": "200"})
+    })
+    r.Run(":8000")
+}
+```
+
+3. URI数据解析和绑定
+
+```go
+//13.go
+package main
+
+import (
+    "net/http"
+
+    "github.com/gin-gonic/gin"
+)
+
+// 定义接收数据的结构体
+type Login struct {
+    // binding:"required"修饰的字段，若接收为空值，则报错，是必须字段
+    User    string `form:"username" json:"user" uri:"user" xml:"user" binding:"required"`
+    Pssword string `form:"password" json:"password" uri:"password" xml:"password" binding:"required"`
+}
+
+func main() {
+    // 1.创建路由
+    r := gin.Default()
+    // JSON绑定
+    r.GET("/:user/:password", func(c *gin.Context) {
+        // 声明接收的变量
+        var login Login
+        // 将uri的数据解析到结构体
+        if err := c.ShouldBindUri(&login); err != nil {
+            c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+            return
+        }
+        // 判断用户名密码是否正确
+        if login.User != "root" || login.Pssword != "admin" {
+            c.JSON(http.StatusBadRequest, gin.H{"status": "304"})
+            return
+        }
+        c.JSON(http.StatusOK, gin.H{"status": "200"})
+    })
+    r.Run(":8000")
+}
+```
+
+```shell
+[root@Docker1 bin]# curl  http://192.168.1.241:8000/admin/test
+{"status":"304"}
+[root@Docker1 bin]# curl  http://192.168.1.241:8000/root/admin
+{"status":"200"}
+```
+
+##  3.4 gin 渲染
+
+1. 各种数据格式的响应
+
+> json、结构体、XML、YAML类似于java的properties、ProtoBuf
+
+```go
+//14.go
+package main
+
+import (
+    "github.com/gin-gonic/gin"
+    "github.com/gin-gonic/gin/testdata/protoexample"
+)
+
+// 多种响应方式
+func main() {
+    // 1.创建路由
+    // 默认使用了2个中间件Logger(), Recovery()
+    r := gin.Default()
+    // 1.json
+    r.GET("/someJSON", func(c *gin.Context) {
+        c.JSON(200, gin.H{"message": "someJSON", "status": 200})
+    })
+    // 2. 结构体响应
+    r.GET("/someStruct", func(c *gin.Context) {
+        var msg struct {
+            Name    string
+            Message string
+            Number  int
+        }
+        msg.Name = "root"
+        msg.Message = "message"
+        msg.Number = 123
+        c.JSON(200, msg)
+    })
+    // 3.XML
+    r.GET("/someXML", func(c *gin.Context) {
+        c.XML(200, gin.H{"message": "abc"})
+    })
+    // 4.YAML响应
+    r.GET("/someYAML", func(c *gin.Context) {
+        c.YAML(200, gin.H{"name": "zhangsan"})
+    })
+    // 5.protobuf格式,谷歌开发的高效存储读取的工具
+    // 数组？切片？如果自己构建一个传输格式，应该是什么格式？
+    r.GET("/someProtoBuf", func(c *gin.Context) {
+        reps := []int64{int64(1), int64(2)}
+        // 定义数据
+        label := "label"
+        // 传protobuf格式数据
+        data := &protoexample.Test{
+            Label: &label,
+            Reps:  reps,
+        }
+        c.ProtoBuf(200, data)
+    })
+
+    r.Run(":8000")
+}
+```
+
+```shell
+[root@Docker1 bin]# curl  http://192.168.1.241:8000/someJSON
+{"message":"someJSON","status":200}
+[root@Docker1 bin]# curl  http://192.168.1.241:8000/someStruct
+{"Name":"root","Message":"message","Number":123}
+[root@Docker1 bin]# curl  http://192.168.1.241:8000/someXML
+<map><message>abc</message></map>
+[root@Docker1 bin]# curl  http://192.168.1.241:8000/someYAML
+name: zhangsan
+[root@Docker1 bin]# curl  http://192.168.1.241:8000/someProtoBuf
+
+label[root@Docker1 bin]# xterm-256color
+
+```
+
+2. HTML模板渲染
+
+> - gin支持加载HTML模板, 然后根据模板参数进行配置并返回相应的数据，本质上就是字符串替换
+> - LoadHTMLGlob()方法可以加载模板文件
+
++ tem/index.html
+
+```html
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta http-equiv="X-UA-Compatible" content="ie=edge">
+    <title>{{.title}}</title>
+</head>
+    <body>
+        fgkjdskjdsh{{.ce}}
+    </body>
+</html>
+```
+
+```go
+//15.go
+package main
+
+import (
+    "net/http"
+
+    "github.com/gin-gonic/gin"
+)
+
+func main() {
+    r := gin.Default()
+    r.LoadHTMLGlob("tem/*")
+    r.GET("/index", func(c *gin.Context) {
+        c.HTML(http.StatusOK, "index.html", gin.H{"title": "我是测试", "ce": "123456"})
+    })
+    r.Run()
+}
+```
+
+```shell
+[root@Docker1 gin]# curl http://192.168.1.241:8080/index
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta http-equiv="X-UA-Compatible" content="ie=edge">
+    <title>我是测试</title>
+</head>
+    <body>
+        fgkjdskjdsh123456
+    </body>
+</html>
+[root@Docker1 gin]#
+```
+
+-----
+
++ 头尾分离
+
+  + tem/user/index.html
+
+  ```html
+  {{ define "user/index.html" }}
+  {{template "public/header" .}}
+          fgkjdskjdsh{{.address}}
+  {{template "public/footer" .}}
+  {{ end }}
+  ```
+
+  + tem/public/header.html
+
+  ```html
+  {{define "public/header"}}
+  <!DOCTYPE html>
+  <html lang="en">
+  <head>
+      <meta charset="UTF-8">
+      <meta name="viewport" content="width=device-width, initial-scale=1.0">
+      <meta http-equiv="X-UA-Compatible" content="ie=edge">
+      <title>{{.title}}</title>
+  </head>
+      <body>
+  
+  {{end}}
+  ```
+
+  + tem/public/footer.html
+
+  ```html
+  {{define "public/footer"}}
+  </body>
+  </html>
+  {{ end }}
+  ```
+
+  + go代码
+
+  ```go
+  //16.go
+  package main
+  
+  import (
+      "net/http"
+      "github.com/gin-gonic/gin"
+  )
+  
+  func main() {
+      r := gin.Default()
+      //静态文件目录
+      //r.Static("/assets", "./assets")
+      
+      r.LoadHTMLGlob("tem/**/*")
+      r.GET("/index", func(c *gin.Context) {
+          c.HTML(http.StatusOK, "user/index.html", gin.H{"title": "我是测试", "address": "www.5lmh.com"})
+      })
+      r.Run()
+  }
+  ```
+
+  + 结果
+
+  ```shell
+  [root@Docker1 gin]# curl http://192.168.1.241:8080/index
+  
+  
+  <!DOCTYPE html>
+  <html lang="en">
+  <head>
+      <meta charset="UTF-8">
+      <meta name="viewport" content="width=device-width, initial-scale=1.0">
+      <meta http-equiv="X-UA-Compatible" content="ie=edge">
+      <title>我是测试</title>
+  </head>
+      <body>
+  
+  
+          fgkjdskjdshwww.5lmh.com
+  
+  </body>
+  </html>
+  
+  [root@Docker1 gin]#
+  ```
+
+---
+
+3. 重定向Redirect
+
+```go
+//17.go
+package main
+
+import (
+    "net/http"
+    "github.com/gin-gonic/gin"
+)
+
+func main() {
+    r := gin.Default()
+    r.GET("/index", func(c *gin.Context) {
+        c.Redirect(http.StatusMovedPermanently, "http://www.5lmh.com")
+    })
+    r.Run()
+}
+```
+```shell
+[root@Docker1 gin]# curl -v  http://192.168.1.241:8080/index
+* About to connect() to 192.168.1.241 port 8080 (#0)
+*   Trying 192.168.1.241...
+* Connected to 192.168.1.241 (192.168.1.241) port 8080 (#0)
+> GET /index HTTP/1.1
+> User-Agent: curl/7.29.0
+> Host: 192.168.1.241:8080
+> Accept: */*
+>
+< HTTP/1.1 301 Moved Permanently
+< Content-Type: text/html; charset=utf-8
+< Location: http://www.5lmh.com
+< Date: Sun, 20 Mar 2022 15:49:24 GMT
+< Content-Length: 54
+<
+<a href="http://www.5lmh.com">Moved Permanently</a>.
+
+* Connection #0 to host 192.168.1.241 left intact
+[root@Docker1 gin]#
+```
+
+
+4. 同步异步
+
+```go
+//18.go
+package main
+
+import (
+    "log"
+    "time"
+
+    "github.com/gin-gonic/gin"
+)
+
+func main() {
+    // 1.创建路由
+    // 默认使用了2个中间件Logger(), Recovery()
+    r := gin.Default()
+    // 1.异步
+    r.GET("/long_async", func(c *gin.Context) {
+        // 需要搞一个副本
+        copyContext := c.Copy()
+        // 异步处理
+        go func() {
+            time.Sleep(3 * time.Second)
+            log.Println("异步执行：" + copyContext.Request.URL.Path)
+        }()
+    })
+    // 2.同步
+    r.GET("/long_sync", func(c *gin.Context) {
+        time.Sleep(3 * time.Second)
+        log.Println("同步执行：" + c.Request.URL.Path)
+    })
+
+    r.Run(":8000")
+}
+
+```
+
+```shell
+[root@Docker1 gin]# export GIN_MODE=release
+[root@Docker1 gin]# go run 18.go
+[GIN] 2022/03/20 - 23:54:07 | 200 |         5.4µs |   192.168.1.241 | GET      "/long_async"
+2022/03/20 23:54:10 异步执行：/long_async
+2022/03/20 23:54:22 同步执行：/long_sync
+[GIN] 2022/03/20 - 23:54:22 | 200 |  3.000348935s |   192.168.1.241 | GET      "/long_sync"
+
+```
+
+## 3.5 gin 中间件
+
+1. 全局中间件
+> 所有请求都经过此中间件，通用Use()函数注册
+
+```go
+//19.go
+package main
+
+import (
+    "fmt"
+    "time"
+
+    "github.com/gin-gonic/gin"
+)
+
+// 定义中间
+func MiddleWare() gin.HandlerFunc {
+    return func(c *gin.Context) {
+        t := time.Now()
+        fmt.Println("中间件开始执行了")
+        // 设置变量到Context的key中，可以通过Get()取
+        c.Set("request", "中间件")
+        status := c.Writer.Status()
+        fmt.Println("中间件执行完毕", status)
+        t2 := time.Since(t)
+        fmt.Println("time:", t2)
+    }
+}
+
+func main() {
+    // 1.创建路由
+    // 默认使用了2个中间件Logger(), Recovery()
+    r := gin.Default()
+    // 注册中间件
+    r.Use(MiddleWare())
+    // {}为了代码规范
+    {
+        r.GET("/ce", func(c *gin.Context) {
+            // 取值
+            req, _ := c.Get("request")
+            fmt.Println("request:", req)
+            // 页面接收
+            c.JSON(200, gin.H{"request": req})
+        })
+
+    }
+    r.Run()
+}
+```
+
+```shell
+[GIN-debug] Listening and serving HTTP on :8080
+中间件开始执行了
+中间件执行完毕 404
+time: 12.999µs
+[GIN] 2022/03/21 - 00:02:08 | 404 |      22.599µs |   192.168.1.241 | GET      "/long_sync"
+中间件开始执行了
+中间件执行完毕 200
+time: 12.599µs
+request: 中间件
+[GIN] 2022/03/21 - 00:02:58 | 200 |      72.095µs |   192.168.1.241 | GET      "/ce"
+```
+
+2. Next()方法
+
+> Next() 返回函数先执行处理代码，再回到中间件执行后续代码
+
+```go
+//20.go
+package main
+
+import (
+    "fmt"
+    "time"
+
+    "github.com/gin-gonic/gin"
+)
+
+// 定义中间
+func MiddleWare() gin.HandlerFunc {
+    return func(c *gin.Context) {
+        t := time.Now()
+        fmt.Println("中间件开始执行了")
+        // 设置变量到Context的key中，可以通过Get()取
+        c.Set("request", "中间件")
+        // 执行函数
+        c.Next()
+        // 中间件执行完后续的一些事情
+        status := c.Writer.Status()
+        fmt.Println("中间件执行完毕", status)
+        t2 := time.Since(t)
+        fmt.Println("time:", t2)
+    }
+}
+
+func main() {
+    // 1.创建路由
+    // 默认使用了2个中间件Logger(), Recovery()
+    r := gin.Default()
+    // 注册中间件
+    r.Use(MiddleWare())
+    // {}为了代码规范
+    {
+        r.GET("/ce", func(c *gin.Context) {
+            // 取值
+            req, _ := c.Get("request")
+            fmt.Println("request:", req)
+            // 页面接收
+            c.JSON(200, gin.H{"request": req})
+        })
+
+    }
+    r.Run()
+}
+```
+
+```shell
+[GIN-debug] Listening and serving HTTP on :8080
+中间件开始执行了
+request: 中间件
+中间件执行完毕 200
+time: 44.897µs
+[GIN] 2022/03/21 - 00:09:46 | 200 |      51.497µs |   192.168.1.241 | GET      "/ce"
+```
+
+3. 局部中间件
+
+> 在路由函数中，中间件作参数使用
+
+```go
+package main
+
+import (
+    "fmt"
+    "time"
+
+    "github.com/gin-gonic/gin"
+)
+
+// 定义中间
+func MiddleWare() gin.HandlerFunc {
+    return func(c *gin.Context) {
+        t := time.Now()
+        fmt.Println("中间件开始执行了")
+        // 设置变量到Context的key中，可以通过Get()取
+        c.Set("request", "中间件")
+        // 执行函数
+        c.Next()
+        // 中间件执行完后续的一些事情
+        status := c.Writer.Status()
+        fmt.Println("中间件执行完毕", status)
+        t2 := time.Since(t)
+        fmt.Println("time:", t2)
+    }
+}
+
+func main() {
+    // 1.创建路由
+    // 默认使用了2个中间件Logger(), Recovery()
+    r := gin.Default()
+    //局部中间件使用
+    r.GET("/ce", MiddleWare(), func(c *gin.Context) {
+        // 取值
+        req, _ := c.Get("request")
+        fmt.Println("request:", req)
+        // 页面接收
+        c.JSON(200, gin.H{"request": req})
+    })
+    r.Run()
+}
+```
+
+4. 推荐中间件
+
+https://github.com/gin-gonic/contrib/blob/master/README.md
+
+## 3.6 会话控制
+
+1. SetCookie
+
+```go
+package main
+
+import (
+   "github.com/gin-gonic/gin"
+   "fmt"
+)
+
+func main() {
+   // 1.创建路由
+   // 默认使用了2个中间件Logger(), Recovery()
+   r := gin.Default()
+   // 服务端要给客户端cookie
+   r.GET("cookie", func(c *gin.Context) {
+      // 获取客户端是否携带cookie
+      cookie, err := c.Cookie("key_cookie")
+      if err != nil {
+         cookie = "NotSet"
+         // 给客户端设置cookie
+         //  maxAge int, 单位为秒
+         // path,cookie所在目录
+         // domain string,域名
+         //   secure 是否智能通过https访问
+         // httpOnly bool  是否允许别人通过js获取自己的cookie
+         c.SetCookie("key_cookie", "value_cookie", 60, "/",
+            "localhost", false, true)
+      }
+      fmt.Printf("cookie的值是： %s\n", cookie)
+   })
+   r.Run(":8000")
+}
+```
+
+```shell
+[root@Docker1 gin]# curl -v http://192.168.1.241:8000/cookie
+* About to connect() to 192.168.1.241 port 8000 (#0)
+*   Trying 192.168.1.241...
+* Connected to 192.168.1.241 (192.168.1.241) port 8000 (#0)
+> GET /cookie HTTP/1.1
+> User-Agent: curl/7.29.0
+> Host: 192.168.1.241:8000
+> Accept: */*
+>
+< HTTP/1.1 200 OK
+< Set-Cookie: key_cookie=value_cookie; Path=/; Domain=localhost; Max-Age=60; HttpOnly
+< Date: Sun, 20 Mar 2022 16:25:55 GMT
+< Content-Length: 0
+<
+* Connection #0 to host 192.168.1.241 left intact
+[root@Docker1 gin]#
+```
+
+2. cookie的使用
+
+> 模拟实现权限验证中间件
+>
+> + 有2个路由，login和home
+>
+> + login用于设置cookie
+>
+> + home是访问查看信息的请求
+>
+> + 在请求home之前，先跑中间件代码，检验是否存在cookie
+
+```go
+package main
+
+import (
+   "github.com/gin-gonic/gin"
+   "net/http"
+)
+
+func AuthMiddleWare() gin.HandlerFunc {
+   return func(c *gin.Context) {
+      // 获取客户端cookie并校验
+      if cookie, err := c.Cookie("abc"); err == nil {
+         if cookie == "123" {
+            c.Next()
+            return
+         }
+      }
+      // 返回错误
+      c.JSON(http.StatusUnauthorized, gin.H{"error": "err"})
+      // 若验证不通过，不再调用后续的函数处理
+      c.Abort()
+      return
+   }
+}
+
+func main() {
+   // 1.创建路由
+   r := gin.Default()
+   r.GET("/login", func(c *gin.Context) {
+      // 设置cookie
+      c.SetCookie("abc", "123", 60, "/",
+         "localhost", false, true)
+      // 返回信息
+      c.String(200, "Login success!")
+   })
+   r.GET("/home", AuthMiddleWare(), func(c *gin.Context) {
+      c.JSON(200, gin.H{"data": "home"})
+   })
+   r.Run(":8000")
+}
+```
+
+3. sessions
+
+> gorilla/sessions为自定义session后端提供cookie和文件系统session以及基础结构。
+>
+> 主要功能是：
+>
+> - 简单的API：将其用作设置签名（以及可选的加密）cookie的简便方法。
+> - 内置的后端可将session存储在cookie或文件系统中。
+> - Flash消息：一直持续读取的session值。
+> - 切换session持久性（又称“记住我”）和设置其他属性的便捷方法。
+> - 旋转身份验证和加密密钥的机制。
+> - 每个请求有多个session，即使使用不同的后端也是如此。
+> - 自定义session后端的接口和基础结构：可以使用通用API检索并批量保存来自不同商店的session。
+
+```go
+package main
+
+import (
+    "fmt"
+    "net/http"
+    "github.com/gorilla/sessions"
+)
+
+// 初始化一个cookie存储对象
+// something-very-secret应该是一个你自己的密匙，只要不被别人知道就行
+var store = sessions.NewCookieStore([]byte("something-very-secret"))
+
+func main() {
+    http.HandleFunc("/save", SaveSession)
+    http.HandleFunc("/get", GetSession)
+    err := http.ListenAndServe(":8080", nil)
+    if err != nil {
+        fmt.Println("HTTP server failed,err:", err)
+        return
+    }
+}
+
+func SaveSession(w http.ResponseWriter, r *http.Request) {
+    // Get a session. We're ignoring the error resulted from decoding an
+    // existing session: Get() always returns a session, even if empty.
+
+    //　获取一个session对象，session-name是session的名字
+    session, err := store.Get(r, "session-name")
+    if err != nil {
+        http.Error(w, err.Error(), http.StatusInternalServerError)
+        return
+    }
+
+    // 在session中存储值
+    session.Values["foo"] = "bar"
+    session.Values[42] = 43
+    // 保存更改
+    session.Save(r, w)
+}
+func GetSession(w http.ResponseWriter, r *http.Request) {
+    session, err := store.Get(r, "session-name")
+    if err != nil {
+        http.Error(w, err.Error(), http.StatusInternalServerError)
+        return
+    }
+    foo := session.Values["foo"]
+    fmt.Println(foo)
+}
+```
+
+
+
+```go
+    // 删除
+    // 将session的最大存储时间设置为小于零的数即为删除
+    session.Options.MaxAge = -1
+    session.Save(r, w)
+```
+
+
+
+
+
+
+
+
+
+
 
 
 
