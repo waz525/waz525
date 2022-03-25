@@ -3863,6 +3863,15 @@ func main() {
    r.Run(":8000")
 }
 ```
+```shell
+[root@Docker1 gin]# curl http://192.168.1.241:8000/login
+Login success!
+[root@Docker1 gin]# curl http://192.168.1.241:8000/home
+{"error":"err"}
+[root@Docker1 gin]# curl http://192.168.1.241:8000/home -H "cookie: abc=123;"
+{"data":"home"}
+```
+
 
 3. sessions
 
@@ -3938,9 +3947,323 @@ func GetSession(w http.ResponseWriter, r *http.Request) {
     session.Save(r, w)
 ```
 
+## 3.7 参数验证
+
+1. 结构体验证
+
+> 用gin框架的数据验证，可以不用解析数据，减少if else，会简洁许多。
+
+```go
+//24.go
+package main
+
+import (
+    "fmt"
+    "time"
+
+    "github.com/gin-gonic/gin"
+)
+
+//Person ..
+type Person struct {
+    //不能为空并且大于10
+    Age      int       `form:"age" binding:"required,gt=10"`
+    Name     string    `form:"name" binding:"required"`
+    Birthday time.Time `form:"birthday" time_format:"2006-01-02" time_utc:"1"`
+}
+
+func main() {
+    r := gin.Default()
+    r.GET("/5lmh", func(c *gin.Context) {
+        var person Person
+        if err := c.ShouldBind(&person); err != nil {
+            c.String(500, fmt.Sprint(err))
+            return
+        }
+        c.String(200, fmt.Sprintf("%#v", person))
+    })
+    r.Run()
+}
+```
+
+```shell
+[root@Docker1 gin]# curl "http://192.168.1.241:8080/5lmh?age=11&name=枯藤&birthday=2006-01-02"
+main.Person{Age:11, Name:"枯藤", Birthday:time.Date(2006, time.January, 2, 0, 0, 0, 0, time.UTC)}
+[root@Docker1 gin]#
+```
 
 
 
++ 自定义验证 validator.v8
+
+示例一：
+
+```go
+package main
+
+import (
+    "net/http"
+    "reflect"
+    "github.com/gin-gonic/gin"
+    "github.com/gin-gonic/gin/binding"
+    "gopkg.in/go-playground/validator.v8"
+)
+
+/*
+    对绑定解析到结构体上的参数，自定义验证功能
+    比如我们要对 name 字段做校验，要不能为空，并且不等于 admin ，类似这种需求，就无法 binding 现成的方法
+    需要我们自己验证方法才能实现 官网示例（https://godoc.org/gopkg.in/go-playground/validator.v8#hdr-Custom_Functions）
+    这里需要下载引入下 gopkg.in/go-playground/validator.v8
+*/
+type Person struct {
+    Age int `form:"age" binding:"required,gt=10"`
+    // 2、在参数 binding 上使用自定义的校验方法函数注册时候的名称
+    Name    string `form:"name" binding:"NotNullAndAdmin"`
+    Address string `form:"address" binding:"required"`
+}
+
+// 1、自定义的校验方法
+func nameNotNullAndAdmin(v *validator.Validate, topStruct reflect.Value, currentStructOrField reflect.Value, field reflect.Value, fieldType reflect.Type, fieldKind reflect.Kind, param string) bool {
+
+    if value, ok := field.Interface().(string); ok {
+        // 字段不能为空，并且不等于  admin
+        return value != "" && !("5lmh" == value)
+    }
+
+    return true
+}
+
+func main() {
+    r := gin.Default()
+
+    // 3、将我们自定义的校验方法注册到 validator中
+    if v, ok := binding.Validator.Engine().(*validator.Validate); ok {
+        // 这里的 key 和 fn 可以不一样最终在 struct 使用的是 key
+        v.RegisterValidation("NotNullAndAdmin", nameNotNullAndAdmin)
+    }
+
+    /*
+        curl -X GET "http://127.0.0.1:8080/testing?name=&age=12&address=beijing"
+        curl -X GET "http://127.0.0.1:8080/testing?name=lmh&age=12&address=beijing"
+        curl -X GET "http://127.0.0.1:8080/testing?name=adz&age=12&address=beijing"
+    */
+    r.GET("/5lmh", func(c *gin.Context) {
+        var person Person
+        if e := c.ShouldBind(&person); e == nil {
+            c.String(http.StatusOK, "%v", person)
+        } else {
+            c.String(http.StatusOK, "person bind err:%v", e.Error())
+        }
+    })
+    r.Run()
+}
+```
+
+示例二：
+
+```go
+package main
+
+import (
+    "net/http"
+    "reflect"
+    "time"
+
+    "github.com/gin-gonic/gin"
+    "github.com/gin-gonic/gin/binding"
+    "gopkg.in/go-playground/validator.v8"
+)
+
+// Booking contains binded and validated data.
+type Booking struct {
+    //定义一个预约的时间大于今天的时间
+    CheckIn time.Time `form:"check_in" binding:"required,bookabledate" time_format:"2006-01-02"`
+    //gtfield=CheckIn退出的时间大于预约的时间
+    CheckOut time.Time `form:"check_out" binding:"required,gtfield=CheckIn" time_format:"2006-01-02"`
+}
+
+func bookableDate(
+    v *validator.Validate, topStruct reflect.Value, currentStructOrField reflect.Value,
+    field reflect.Value, fieldType reflect.Type, fieldKind reflect.Kind, param string,
+) bool {
+    //field.Interface().(time.Time)获取参数值并且转换为时间格式
+    if date, ok := field.Interface().(time.Time); ok {
+        today := time.Now()
+        if today.Unix() > date.Unix() {
+            return false
+        }
+    }
+    return true
+}
+
+func main() {
+    route := gin.Default()
+    //注册验证
+    if v, ok := binding.Validator.Engine().(*validator.Validate); ok {
+        //绑定第一个参数是验证的函数第二个参数是自定义的验证函数
+        v.RegisterValidation("bookabledate", bookableDate)
+    }
+
+    route.GET("/5lmh", getBookable)
+    route.Run()
+}
+
+func getBookable(c *gin.Context) {
+    var b Booking
+    if err := c.ShouldBindWith(&b, binding.Query); err == nil {
+        c.JSON(http.StatusOK, gin.H{"message": "Booking dates are valid!"})
+    } else {
+        c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+    }
+}
+
+// curl -X GET "http://localhost:8080/5lmh?check_in=2019-11-07&check_out=2019-11-20"
+// curl -X GET "http://localhost:8080/5lmh?check_in=2019-09-07&check_out=2019-11-20"
+// curl -X GET "http://localhost:8080/5lmh?check_in=2019-11-07&check_out=2019-11-01"
+```
+
+
+
++ 多语言翻译验证
+
+>  gopkg.in/go-playground/validator.v9
+
+```go
+package main
+
+import (
+    "fmt"
+
+    "github.com/gin-gonic/gin"
+    "github.com/go-playground/locales/en"
+    "github.com/go-playground/locales/zh"
+    "github.com/go-playground/locales/zh_Hant_TW"
+    ut "github.com/go-playground/universal-translator"
+    "gopkg.in/go-playground/validator.v9"
+    en_translations "gopkg.in/go-playground/validator.v9/translations/en"
+    zh_translations "gopkg.in/go-playground/validator.v9/translations/zh"
+    zh_tw_translations "gopkg.in/go-playground/validator.v9/translations/zh_tw"
+)
+
+var (
+    Uni      *ut.UniversalTranslator
+    Validate *validator.Validate
+)
+
+type User struct {
+    Username string `form:"user_name" validate:"required"`
+    Tagline  string `form:"tag_line" validate:"required,lt=10"`
+    Tagline2 string `form:"tag_line2" validate:"required,gt=1"`
+}
+
+func main() {
+    en := en.New()
+    zh := zh.New()
+    zh_tw := zh_Hant_TW.New()
+    Uni = ut.New(en, zh, zh_tw)
+    Validate = validator.New()
+
+    route := gin.Default()
+    route.GET("/5lmh", startPage)
+    route.POST("/5lmh", startPage)
+    route.Run(":8080")
+}
+
+func startPage(c *gin.Context) {
+    //这部分应放到中间件中
+    locale := c.DefaultQuery("locale", "zh")
+    trans, _ := Uni.GetTranslator(locale)
+    switch locale {
+    case "zh":
+        zh_translations.RegisterDefaultTranslations(Validate, trans)
+        break
+    case "en":
+        en_translations.RegisterDefaultTranslations(Validate, trans)
+        break
+    case "zh_tw":
+        zh_tw_translations.RegisterDefaultTranslations(Validate, trans)
+        break
+    default:
+        zh_translations.RegisterDefaultTranslations(Validate, trans)
+        break
+    }
+
+    //自定义错误内容
+    Validate.RegisterTranslation("required", trans, func(ut ut.Translator) error {
+        return ut.Add("required", "{0} must have a value!", true) // see universal-translator for details
+    }, func(ut ut.Translator, fe validator.FieldError) string {
+        t, _ := ut.T("required", fe.Field())
+        return t
+    })
+
+    //这块应该放到公共验证方法中
+    user := User{}
+    c.ShouldBind(&user)
+    fmt.Println(user)
+    err := Validate.Struct(user)
+    if err != nil {
+        errs := err.(validator.ValidationErrors)
+        sliceErrs := []string{}
+        for _, e := range errs {
+            sliceErrs = append(sliceErrs, e.Translate(trans))
+        }
+        c.String(200, fmt.Sprintf("%#v", sliceErrs))
+    }
+    c.String(200, fmt.Sprintf("%#v", "user"))
+}
+```
+
+> http://localhost:8080/testing?user_name=枯藤&tag_line=9&tag_line2=3&locale=en 返回英文的验证信息
+>
+> http://localhost:8080/testing?user_name=枯藤&tag_line=9&tag_line2=3&locale=zh 返回中文的验证信息
+
+## 3.8 其它
+
+### 3.8.1 日志文件
+
+```go
+//25.go
+package main
+
+import (
+    "io"
+    "os"
+    "github.com/gin-gonic/gin"
+)
+
+func main() {
+    gin.DisableConsoleColor()
+
+    // Logging to a file.
+    f, _ := os.Create("gin.log")
+    gin.DefaultWriter = io.MultiWriter(f)
+    // 如果需要同时将日志写入文件和控制台，请使用以下代码。
+    // gin.DefaultWriter = io.MultiWriter(f, os.Stdout)
+    r := gin.Default()
+    r.GET("/ping", func(c *gin.Context) {
+        c.String(200, "pong")
+    })
+    r.Run()
+}
+```
+
+```shell
+[root@Docker1 gin]# cat gin.log
+[GIN-debug] [WARNING] Creating an Engine instance with the Logger and Recovery middleware already attached.
+
+[GIN-debug] [WARNING] Running in "debug" mode. Switch to "release" mode in production.
+ - using env:   export GIN_MODE=release
+ - using code:  gin.SetMode(gin.ReleaseMode)
+
+[GIN-debug] GET    /ping                     --> main.main.func1 (3 handlers)
+[GIN-debug] [WARNING] You trusted all proxies, this is NOT safe. We recommend you to set a value.
+Please check https://pkg.go.dev/github.com/gin-gonic/gin#readme-don-t-trust-all-proxies for details.
+[GIN-debug] Environment variable PORT is undefined. Using port :8080 by default
+[GIN-debug] Listening and serving HTTP on :8080
+[GIN] 2022/03/25 - 23:07:18 | 404 |         700ns |       127.0.0.1 | GET      "/"
+[GIN] 2022/03/25 - 23:07:33 | 200 |      24.599µs |       127.0.0.1 | GET      "/ping"
+[root@Docker1 gin]#
+```
 
 
 
