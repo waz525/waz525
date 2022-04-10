@@ -839,9 +839,7 @@ Italy 首都是 罗马
 
 
 
-
-
-## 1.4 切片(Slice)  待补充
+## 1.4 切片(Slice)  
 
 > ​       切片是对数组的抽象。数组的长度不可改变，与数组相比切片的长度是不固定的，可以追加元素，在追加时可能使切片的容量增大。
 
@@ -4684,6 +4682,384 @@ StandardOutput=null
 [Install]
 WantedBy=multi-user.target
 ```
+
+## 99.10 动态规划算法
+
+### 99.10.1 动态规划-01背包问题
+
+>有一个背包，容量为4磅，现有如下物品：
+>
+>| 物品 | 重量（磅） | 价格（元） |
+>| ---- | ---------- | ---------- |
+>| 吉他 | 1          | 1500       |
+>| 音响 | 4          | 3000       |
+>| 电脑 | 3          | 2000       |
+>
+>1 要求达到的目标为装入的背包的总价值最大，并且重量不超出。
+>
+>2 要求装入的物品不能重复。
+
+```go
+//01背包问题--动态规划算法
+package main
+
+import (
+	"fmt"
+)
+
+func main() {
+
+	//待放入背包里的物品价值
+	var vGoods = [3]int{1500, 3000, 2000}
+	//待放入背包里的物品重量
+	var wGoods = [3]int{1, 4, 3}
+	//待放入背包容量（重量）
+	wBag := 4
+
+	//动态生成一个多维数组
+	//按物品数量生成行数，多一行为0
+	var vBag = make([][]int, len(wGoods)+1)
+	//按物品数量生成行数，多一行为0
+	for i := range vBag {
+		vBag[i] = make([]int, wBag+1)
+	}
+
+	//将第一列置0
+	for i := 0; i < len(wGoods)+1; i++ {
+		vBag[i][0] = 0
+	}
+	//将第一行置0
+	for j := 0; j < wBag+1; j++ {
+		vBag[0][j] = 0
+	}
+
+	//i 表示能放入物品的种类
+	for i := 1; i < len(wGoods)+1; i++ {
+		vGoods1 := vGoods[i-1] //当前种类物品的价值
+		wGoods1 := wGoods[i-1] //当前种类物品的重量
+		//j 表示背包容量
+		for j := 1; j < wBag+1; j++ {
+			/*
+				如果当前背包重量不能容纳此物品，则取上一个物品当前容量下的价值
+				如果能容纳，则max(放入此物品的价值，上一个物品当前容量下的价值)
+			*/
+			if j < wGoods1 {
+				vBag[i][j] = vBag[i-1][j] //上一个物品当前容量下的价值
+			} else {
+				vTest := vGoods1 + vBag[i-1][j-wGoods1] //假如放入此物品，此时背包里总价值
+				if vBag[i-1][j] > vTest {               //比较假如放入此物品的价值与上一个物品当前容量的价值
+					vBag[i][j] = vBag[i-1][j] //vBag[i-1][j] -- 上一个物品当前容量下的价值
+				} else {
+					vBag[i][j] = vTest
+				}
+			}
+
+		}
+	}
+	fmt.Println(vBag)
+	//背包能够产生的最大总价值
+	fmt.Println(vBag[len(wGoods)][wBag])
+}
+
+```
+
+### 99.10.2 动态规划-完全背包
+>有一个背包，容量为4磅，现有如下物品：
+>
+>| 物品 | 重量（磅） | 价格（元） |
+>| ---- | ---------- | ---------- |
+>| 吉他 | 1          | 1500       |
+>| 音响 | 4          | 8000       |
+>| 电脑 | 3          | 5000       |
+>
+>1 要求达到的目标为装入的背包的总价值最大，并且重量不超出。
+>
+>2 每类物品无限多。
+
+
+```go
+//完全背包问题--动态规划算法
+package main
+
+import (
+	"fmt"
+)
+
+func main() {
+
+	//待放入背包里的物品价值
+	var vGoods = [3]int{1500, 8000, 5000}
+	//待放入背包里的物品重量
+	var wGoods = [3]int{1, 4, 3}
+	//待放入背包容量（重量）
+	wBag := 8
+
+	//动态生成一个多维数组
+	//按物品数量生成行数，多一行为0
+	var vBag = make([][]int, len(wGoods)+1)
+	//按物品数量生成行数，多一行为0
+	for i := range vBag {
+		vBag[i] = make([]int, wBag+1)
+	}
+
+	//将第一列置0
+	for i := 0; i < len(wGoods)+1; i++ {
+		vBag[i][0] = 0
+	}
+	//将第一行置0
+	for j := 0; j < wBag+1; j++ {
+		vBag[0][j] = 0
+	}
+
+	//i 表示能放入物品的种类
+	for i := 1; i < len(wGoods)+1; i++ {
+		vGoods1 := vGoods[i-1] //当前种类物品的价值
+		wGoods1 := wGoods[i-1] //当前种类物品的重量
+		//j 表示背包容量
+		for j := 1; j < wBag+1; j++ {
+			vBag[i][j] = vBag[i-1][j]
+			//选取放入若干i类物品，取最大价值
+			for k := 1; k*wGoods1 <= j; k++ {
+				//若放入k个第i类物品，则当前的背包价值=k个物品价值+去掉k个物品重量物品价值
+				m := vGoods1*k + vBag[i-1][j-k*wGoods1]
+				if vBag[i][j] < m {
+					vBag[i][j] = m
+				}
+			}
+		}
+	}
+	fmt.Println(vBag)
+	//背包能够产生的最大总价值
+	fmt.Println(vBag[len(wGoods)][wBag])
+}
+
+```
+
+### 99.10.3 动态规划-多重背包
+>有一个背包，容量为4磅，现有如下物品：
+>
+>| 物品 | 数量 | 重量（磅） | 价格（元） |
+>| ---- | ---- | ---------- | ---------- |
+>| 吉他 | 4    | 1          | 1500       |
+>| 音响 | 1    | 4          | 8000       |
+>| 电脑 | 2    | 3          | 5000       |
+>
+>要求达到的目标为装入的背包的总价值最大，并且重量不超出。
+>
+
+```go
+//完全背包问题--动态规划算法
+package main
+
+import (
+	"fmt"
+)
+
+func main() {
+
+	//待放入背包里的物品价值
+	var vGoods = [3]int{1500, 8000, 5000}
+	//待放入背包里的物品重量
+	var wGoods = [3]int{1, 4, 3}
+	//待放入背包里的物品数量
+	var cGoods = [3]int{4, 1, 2}
+
+	//待放入背包容量（重量）
+	wBag := 8
+
+	//动态生成一个多维数组
+	//按物品数量生成行数，多一行为0
+	var vBag = make([][]int, len(wGoods)+1)
+	//按物品数量生成行数，多一行为0
+	for i := range vBag {
+		vBag[i] = make([]int, wBag+1)
+	}
+
+	//将第一列置0
+	for i := 0; i < len(wGoods)+1; i++ {
+		vBag[i][0] = 0
+	}
+	//将第一行置0
+	for j := 0; j < wBag+1; j++ {
+		vBag[0][j] = 0
+	}
+
+	//i 表示能放入物品的种类
+	for i := 1; i < len(wGoods)+1; i++ {
+		vGoods1 := vGoods[i-1] //当前种类物品的价值
+		wGoods1 := wGoods[i-1] //当前种类物品的重量
+		cGoods1 := cGoods[i-1] //当前种类物品的数量
+		//j 表示背包容量
+		for j := 1; j < wBag+1; j++ {
+			vBag[i][j] = vBag[i-1][j]
+			//选取放入若干i类物品，取最大价值
+			for k := 1; k <= cGoods1 && k*wGoods1 <= j; k++ {
+				//若放入k个第i类物品，则当前的背包价值=k个物品价值+去掉k个物品重量物品价值
+				m := vGoods1*k + vBag[i-1][j-k*wGoods1]
+				if vBag[i][j] < m {
+					vBag[i][j] = m
+				}
+			}
+		}
+	}
+	fmt.Println(vBag)
+	//背包能够产生的最大总价值
+	fmt.Println(vBag[len(wGoods)][wBag])
+}
+
+```
+
+### 99.10.4 动态规划-数字三角形
+
+> 给字一个由n行数字组成的等腰三角形，试设计一个算法，计算出从三角形的顶至底的一条路径，使该路径经过的数字总和最大。
+>
+> 输入
+>
+> 数字三角形的行数和数字三角形
+>
+> 输出
+>
+> 最大的路径和以及路径
+>
+> 输入样例
+>
+> 5
+> 7
+> 8 3
+> 9 8 7
+> 1 2 3 4
+> 4 5 6 7 8
+>
+> 输出样例
+>
+> 33
+> 7 8 8 3 7数字三角形（等腰三角形）。
+>
+> 本题暂时不考虑路径，只考虑最终结果
+
+#### 解法一、递归做法（自上而下）
+
+```go
+//路径最大值--动态规划算法
+package main
+
+import (
+	"fmt"
+)
+
+//函数外，不能使用 := 来声名变量
+var maxSumList [5][5]int
+
+func max(i int, j int) int {
+	if i > j {
+		return i
+	} else {
+		return j
+	}
+}
+
+/*
+//无记录递归
+func MaxSum(i int, j int, n int, D [][]int) int {
+	if i >= n-1 {
+		return D[i][j]
+	}
+	x := MaxSum(i+1, j, n, D)
+	y := MaxSum(i+1, j+1, n, D)
+
+	fmt.Println(i, j, x, y)
+	return max(x, y) + D[i][j]
+
+}
+*/
+
+//有记录递归
+func MaxSum(i int, j int, n int, D [][]int) int {
+	if maxSumList[i][j] != 0 {
+		return maxSumList[i][j]
+	}
+	if i >= n-1 {
+		maxSumList[i][j] = D[i][j]
+	} else {
+		x := MaxSum(i+1, j, n, D)
+		y := MaxSum(i+1, j+1, n, D)
+		maxSumList[i][j] = max(x, y) + D[i][j]
+	}
+
+	return maxSumList[i][j]
+
+}
+
+func main() {
+	n := 5
+	D := [][]int{{7}, {3, 8}, {8, 1, 0}, {2, 7, 4, 4}, {4, 5, 2, 6, 5}}
+
+	max := MaxSum(0, 0, n, D)
+
+	fmt.Println(max)
+
+}
+
+```
+
+#### 解法二、动态规划（自下而上）
+
+```go
+//路径最大值--动态规划算法
+package main
+
+import (
+	"fmt"
+)
+
+func max(i int, j int) int {
+	if i > j {
+		return i
+	} else {
+		return j
+	}
+}
+
+func main() {
+	n := 5
+	D := [5][5]int{{7}, {3, 8}, {8, 1, 0}, {2, 7, 4, 4}, {4, 5, 2, 6, 5}}
+	maxSum := [5][5]int{}
+
+	//最后一层与原值相同
+	maxSum[4] = D[4]
+
+	for i := n - 2; i >= 0; i-- {
+		for j := 0; j <= i; j++ {
+			//上一层的单值，是max(下一层左值 ，下一层右值 ) + 当前值
+			maxSum[i][j] = max(maxSum[i+1][j], maxSum[i+1][j+1]) + D[i][j]
+		}
+
+	}
+
+	fmt.Println(maxSum[0][0])
+
+	//打印路径
+	//列号，初始为0
+	l := 0
+	fmt.Print(D[0][l], " ")
+	for i := 1; i < n; i++ {
+		if maxSum[i][l] > maxSum[i][l+1] {
+			fmt.Print(D[i][l], " ")
+		} else {
+			fmt.Print(D[i][l+1], " ")
+			l++
+		}
+
+	}
+	fmt.Println("")
+
+}
+
+```
+
+
+
+
 
 # Utils 自定义库
 
