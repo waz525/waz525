@@ -5057,6 +5057,41 @@ func main() {
 
 ```
 
+## 99.11 常用方法
+
+### 99.11.1 二维数组排序
+
+```go
+    var nOutList [][]int
+
+	......
+	
+	//二维数组排序
+    sort.Slice(nOutList, func(i,j int) bool {
+        nLen := len(nOutList[i])
+        if nLen > len(nOutList[j]) {
+            nLen = len(nOutList[j])
+        }
+        for k:=0 ; k<nLen ; k++ {
+            if nOutList[i][k] != nOutList[j][k] {
+                return nOutList[i][k] < nOutList[j][k] //按顺序排序
+            } 
+        }
+        return true
+    })
+```
+
+### 99.11.2 二维数组动态生成
+
+```go
+    goods := make([][]int, count)
+    for i := 0; i < count; i++ {
+        goods[i] = make([]int, 3)
+    }
+```
+
+
+
 
 
 

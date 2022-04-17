@@ -2802,7 +2802,7 @@ func main() {
 
 ```
 
-### HJ77 火车进站(有错误)
+### HJ77 火车进站（<font color=red>切片陷阱</font>)
 
 > 给定一个正整数N代表火车数量，0<N<10，接下来输入火车入站的序列，一共N辆火车，每辆火车以数字1-9编号，火车站只有一个方向进出，同时停靠在火车站的列车中，只有后进站的出站了，先进站的才能出站。
 >
@@ -2839,20 +2839,35 @@ func main() {
 > 第五种方案：1进、2进、3进、3出、2出、1出
 > 请注意，[3,1,2]这个序列是不可能实现的。    
 
-
+> <font color=red>切片陷阱：当用go语言写递归函数时，传递slice,内部要重新make一个新的slice来返回。如果使用传递的slice,则内部函数的修改，导致外层slice的底层内存发生变化。也就是保证每个slice拥有自己一个独立的底层内存，其他slice不在共享此底层内存</font>
 
 ```go
 package main
 
 import (
 	"fmt"
+    "sort"
 )
 
 //结果集
 var nOutList [][]int
 
+//复制切片，必须重新make，否则数据会乱
+func copySlice(nums []int) []int {
+    if nums == nil {
+        return nil
+    }
+ 
+    var r = make([]int, len(nums))
+    for i, num := range nums {
+        r[i] = num
+    }
+ 
+    return r
+}
+
 func TrainRun(inList []int, outList []int, nOut []int, index int) {
-	fmt.Println(index, "---> ", inList, outList, nOut)
+	//fmt.Println(index, "---> ", inList, outList, nOut)
 	if len(inList) == 0 && len(outList) == 0 {
 		nOutList = append(nOutList, nOut)
 		return
@@ -2861,29 +2876,29 @@ func TrainRun(inList []int, outList []int, nOut []int, index int) {
 	if len(outList) > 0 {
 		var temp_in, temp_out, temp_nOut []int
 		if len(inList) > 0 {
-			temp_in = inList[0:]
+            temp_in = copySlice(inList[0:])
 		}
 		if len(outList) > 1 {
-			temp_out = outList[0 : len(outList)-1]
+            temp_out = copySlice( outList[0 : len(outList)-1] )
 		}
 		if len(nOut) > 0 {
-			temp_nOut = nOut[0:]
+            temp_nOut = copySlice( nOut[0:] )
 		}
 		temp_nOut = append(temp_nOut, outList[len(outList)-1])
-		fmt.Println(index, "outList ---> ", inList, outList, nOut)
+		//fmt.Println(index, "outList ---> ", inList, outList, nOut)
 		TrainRun(temp_in, temp_out, temp_nOut, index+1)
 	} 
-	fmt.Println(index, " ++++++> ", inList, outList, nOut)
+	//fmt.Println(index, " ++++++> ", inList, outList, nOut)
 	if len(inList) > 0 { //如果还有未入站的，就进站
 		var temp_in, temp_out, temp_nOut []int
 		if len(inList) > 1 {
-			temp_in = inList[1:]
+            temp_in = copySlice(inList[1:])
 		}
 		if len(outList) > 0 {
-			temp_out = outList[0:]
+            temp_out = copySlice(outList[0:])
 		}
 		if len(nOut) > 0 {
-			temp_nOut = nOut[0:]
+            temp_nOut = copySlice(nOut[0:])
 		}
 		temp_out = append(temp_out, inList[0])
 
@@ -2912,17 +2927,135 @@ func main() {
 	var nOut []int
 
 	TrainRun(inList, outList, nOut, 0)
-	fmt.Println(nOutList)
+    
+    //二维数组排序
+    sort.Slice(nOutList, func(i,j int) bool {
+        nLen := len(nOutList[i])
+        if nLen > len(nOutList[j]) {
+            nLen = len(nOutList[j])
+        }
+        for k:=0 ; k<nLen ; k++ {
+            if nOutList[i][k] != nOutList[j][k] {
+                return nOutList[i][k] < nOutList[j][k] //按顺序排序
+            } 
+        }
+        return true
+    })
+    
+	//fmt.Println(nOutList)
+    for _,l := range nOutList {
+        for _,v := range l {
+            fmt.Print(v," ")
+        }
+        fmt.Println()
+    }
 
 }
-
 ```
 
 
 
 
 
+### HJ68 成绩排序
 
+> 给定一些同学的信息（名字，成绩）序列，请你将他们的信息按照成绩从高到低或从低到高的排列,相同成绩
+>
+> 都按先录入排列在前的规则处理。
+>
+> 例示：
+> jack   70
+> peter   96
+> Tom    70
+> smith   67
+>
+> 从高到低 成绩
+> peter   96
+> jack   70
+> Tom    70
+> smith   67
+>
+> 从低到高
+>
+> smith   67
+>
+> jack   70
+>
+> Tom    70
+>
+> peter   96
+>
+> 注：0代表从高到低，1代表从低到高
+>
+> 数据范围：人数：1\le n \le 200\1≤*n*≤200 
+>
+> 进阶：时间复杂度：O(nlogn)\*O*(*n**l**o**g**n*) ，空间复杂度：O(n)\*O*(*n*) 
+>
+> 输入：
+>
+> ```
+> 3
+> 0
+> fang 90
+> yang 50
+> nig 70
+> ```
+>
+> 输出：
+>
+> ```
+> fang 90
+> ning 70
+> yang 50
+> ```
+
+```go
+package main
+
+import (
+    "fmt"
+    "sort"
+)
+
+type PScore struct {
+    name string
+    score int
+}
+
+func main() {
+    var peopleNum int 
+    var pType int 
+    var pScoreList []PScore
+    fmt.Scan(&peopleNum)
+    fmt.Scan(&pType)
+    
+    for i:=0 ; i<peopleNum;i++ {
+        
+        var p1 PScore
+        fmt.Scan(&p1.name)
+        fmt.Scan(&p1.score)
+        pScoreList = append(pScoreList,p1)
+        
+    }
+    //使用切片排序，Slice会改变相等时的顺序，SliceStable不会改变相等时的顺序
+    sort.SliceStable(pScoreList, func(i , j int) bool {
+        if pType == 0 {
+            return  pScoreList[i].score > pScoreList[j].score 
+        } else {
+            return  pScoreList[i].score < pScoreList[j].score 
+        }
+    })
+ 
+    
+    for _,v := range pScoreList {
+        fmt.Printf("%s %d\n",v.name,v.score)
+    }
+    
+}
+
+
+
+```
 
 
 
@@ -3020,6 +3153,51 @@ func main() {
     }
 }
 ```
+
+### 技面1 一亿以内的素数的个数
+
+```go
+package main
+
+import (
+	"fmt"
+)
+
+func isSuShu(n int) bool {
+	rst := true
+	s1 := n/2 + 1
+	for i := 2; i < s1; i++ {
+		if n%i == 0 {
+			rst = false
+			break
+		}
+		s1 = n/i + 1
+	}
+	return rst
+}
+
+func getSushuNum(max int) int {
+	count := 0
+	for i := 2; i <= max; i++ {
+		if isSuShu(i) {
+			//fmt.Println(i)
+			count++
+		}
+	}
+	return count
+}
+
+func main() {
+
+	rst := getSushuNum(100000000)
+	//rst := getSushuNum(10000)
+	fmt.Println(rst)
+
+}
+
+```
+
+
 
 
 
