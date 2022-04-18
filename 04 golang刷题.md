@@ -3059,6 +3059,72 @@ func main() {
 
 
 
+### HJ55 挑7
+
+> 输出 1到n之间 的与 7 有关数字的个数。
+>
+> 一个数与7有关是指这个数是 7 的倍数，或者是包含 7 的数字（如 17 ，27 ，37 ... 70 ，71 ，72 ，73...）
+>
+> 输入：
+>
+> ```
+> 20
+> ```
+>
+> 输出：
+>
+> ```
+> 3
+> ```
+>
+> 说明：
+>
+> ```
+> 输入20，1到20之间有关的数字包括7,14,17共3个。 
+> ```
+
+```go
+package main
+
+import (
+    "fmt"
+    "strings"
+    "strconv"
+)
+
+func IsRelate(n int) bool {
+    if n % 7 ==0 {
+        return true
+    }
+    //转换成 字符串
+    nStr := strconv.Itoa(n)
+    //字符串包含判断
+    if strings.Contains(nStr, "7") {
+        return true
+    }
+    return false 
+}
+
+func main() {
+    var n int
+    fmt.Scan(&n)
+    nCount := 0 
+    for i := 1;i<=n ; i++ {
+        if IsRelate(i) {
+            nCount++
+        }
+    }
+    fmt.Println(nCount)
+}
+
+```
+
+
+
+
+
+
+
 
 
 ### 考题三 扑克牌找顺子
