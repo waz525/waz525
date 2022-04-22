@@ -323,7 +323,7 @@ func main() {
 ```
 > 注意：fallthrough 会强制执行后面的 case 语句，fallthrough 不会判断下一条 case 的表达式结果是否为 true
 
-#### Type Switch
+#### Type Switch(type)
 
 ```go
 package main
@@ -600,7 +600,7 @@ func main() {
 
 ### 1.3.7 结构体
 
-+ 定义结构体
+#### 1.3.7.1 定义结构体
 
 ```
 type struct_variable_type struct {
@@ -716,6 +716,93 @@ Book subject : Python 语言教程
 Book book_id : 6495700
 [root@5d09d6b9f9d5 golang]#
 ```
+
+#### 1.3.7.2 结构体相同比较
+
+```go
+package main
+
+import (
+	"fmt"
+	"reflect"
+)
+
+type Person struct {
+	name  string
+	age   int
+	heigh int
+}
+
+func main() {
+	a := Person{name: "Alice", age: 18}
+	var b Person
+	b.name = "Alice"
+	b.age = 18
+	fmt.Println(reflect.DeepEqual(a, b))
+	fmt.Println(a, b)
+	fmt.Println(a == b)   //也可以直接使用等于号
+
+	p := new(Person)
+	p.name = "Jim"
+	fmt.Println(*p)
+}
+
+```
+
+#### 1.3.7.3 结构体组合（类的嵌套）
+
+```go
+package main
+
+import (
+	"fmt"
+)
+
+type X struct {
+	a int
+}
+
+func (x X) Print() {
+	fmt.Println(x.a)
+}
+
+type Y struct {
+	X
+	a int
+}
+type Z struct {
+	Y
+	//	a int
+}
+
+func (z Z) Print() {
+	fmt.Println(z.a)
+}
+
+func main() {
+	x := X{a: 1}
+
+	y := Y{
+		X: x,
+		a: 2,
+	}
+
+	z := Z{
+		Y: y,
+		//		a: 3,
+	}
+
+	fmt.Println(x.a, y.a, z.a)
+
+	fmt.Println(z.Y.X.a, z, z.X.a, z.Y.a)
+	z.Print()
+	y.Print() //调用的是  X.Print
+	z.Y.Print()
+}
+
+```
+
+
 
 ### 1.3.8 范围(Range)
 
@@ -1229,7 +1316,7 @@ go 函数名( 参数列表 )
 
 ```go
 //20.go
-//多线程并发
+//协程并发
 package main
 
 import (
@@ -1266,7 +1353,7 @@ hello
 [root@5d09d6b9f9d5 golang]#
 ```
 
-### 1.8.2 通道（channel）
+### 1.8.2 通道（无缓冲）
 
 > 通道（channel）是用来传递数据的一个数据结构。
 >
@@ -1356,7 +1443,106 @@ func main() {
 [root@5d09d6b9f9d5 golang]#
 ```
 
-### 1.8.3 遍历通道与关闭通道
+### 1.8.4 有无缓冲区别
+
++ 无缓冲channel
+
+```go
+//无缓冲
+package main
+
+import (
+	"fmt"
+	"time"
+)
+
+func main() {
+	//创建一个channel
+	//ch := make(chan string, 10)
+	ch := make(chan string)
+
+	//写数据协程
+	go func() {
+		fmt.Println("写协程开启:", time.Now())
+		ch <- "1"
+		fmt.Println("写入成功:", time.Now())
+	}()
+
+	//读数据协程
+	go func() {
+		fmt.Println("读协程开启:", time.Now())
+		time.Sleep(3 * time.Second)
+		i := <-ch
+		fmt.Println("读取成功:", i, time.Now())
+	}()
+
+	time.Sleep(5 * time.Second) //等待5秒,让所有协程跑完
+	fmt.Println("ok")
+}
+
+```
+> 有缓冲区，写入被阻塞，等读取后再完成
+```
+读协程开启: 2022-04-19 00:24:24.8375086 +0800 CST m=+0.010177601
+写协程开启: 2022-04-19 00:24:24.8375086 +0800 CST m=+0.010177601
+读取成功: 1 2022-04-19 00:24:27.9189821 +0800 CST m=+3.091651101
+写入成功: 2022-04-19 00:24:27.9190704 +0800 CST m=+3.091739401
+ok
+```
+
++ 有缓冲区
+
+```go
+package main
+
+import (
+	"fmt"
+	"time"
+)
+
+func main() {
+	//创建一个channel
+	//ch := make(chan string, 10)
+	ch := make(chan string)
+
+	//写数据协程
+	go func() {
+		fmt.Println("写协程开启:", time.Now())
+		ch <- "1"
+		fmt.Println("写入成功:", time.Now())
+	}()
+
+	//读数据协程
+	go func() {
+		fmt.Println("读协程开启:", time.Now())
+		time.Sleep(3 * time.Second)
+		i := <-ch
+		fmt.Println("读取成功:", i, time.Now())
+	}()
+
+	time.Sleep(5 * time.Second) //等待5秒,让所有协程跑完
+	fmt.Println("ok")
+}
+
+```
+
+> 有缓冲区，写入不会被阻塞
+
+```
+读协程开启: 2022-04-19 00:21:38.597473 +0800 CST m=+0.009406201
+写协程开启: 2022-04-19 00:21:38.597473 +0800 CST m=+0.009406201
+写入成功: 2022-04-19 00:21:38.6706444 +0800 CST m=+0.082577601
+读取成功: 1 2022-04-19 00:21:41.6707801 +0800 CST m=+3.082713301
+ok
+```
+
+
+
+
+
+
+
+### 1.8.5 遍历通道与关闭通道
 
 > 通过 range 关键字来实现遍历读取到的数据：`v, ok := <-ch`
 
@@ -1388,6 +1574,67 @@ func main() {
         }
 }
 ```
+
+### 1.8.6 主线程等待协程完成
+
+#### 1.8.6.1 sync.WaitGroup
+
+```go
+package main
+
+import (
+	"fmt"
+	"sync"
+)
+
+var wg sync.WaitGroup   //定义WaitGroup
+
+func running(i int) {
+    defer wg.Done()     //完成一个goruntime，执行一次Done()方法
+	fmt.Println(i)
+}
+func main() {
+
+	for i := 0; i < 10; i++ {
+		wg.Add(1)		 //新建一个goruntime，执行一次Add()方法
+		go running(i)
+	}
+	wg.Wait()            //在主线程中执行Wait()方法
+	fmt.Println("Main End")
+}
+
+```
+
+#### 1.8.6.2 通过channel控制
+
+```go
+package main
+
+import (
+	"fmt"
+)
+
+func running(i int, ch chan int) {
+	fmt.Println(i)
+	ch <- i
+}
+func main() {
+
+	ch := make(chan int)
+	for i := 0; i < 10; i++ {
+		go running(i, ch)
+		<-ch
+	}
+	fmt.Println("Main End")
+}
+
+```
+
+
+
+
+
+
 
 ## 1.9 命令行参数
 
@@ -1460,6 +1707,66 @@ host：127.0.0.1
 port：3370
 [root@5d09d6b9f9d5 golang]#
 ```
+
+## 1.20 链表list
+
+list 的初始化有两种方法：分别是使用 New() 函数和 var 关键字声明，两种方法的初始化效果都是一致的。
+
+1) 通过 container/list 包的 New() 函数初始化 list      `变量名 := list.New()`
+
+2) 通过 var 关键字声明初始化 list         `var 变量名 list.List`
+
+| 方  法                                                | 功  能                                            |
+| ----------------------------------------------------- | ------------------------------------------------- |
+| InsertAfter(v interface {}, mark * Element) * Element | 在 mark 点之后插入元素，mark 点由其他插入函数提供 |
+| InsertBefore(v interface {}, mark * Element) *Element | 在 mark 点之前插入元素，mark 点由其他插入函数提供 |
+| PushBackList(other *List)                             | 添加 other 列表元素到尾部                         |
+| PushFrontList(other *List)                            | 添加 other 列表元素到头部                         |
+
+
+
+```go
+package main
+
+import (
+	"container/list"
+	"fmt"
+)
+
+type Person struct {
+	name string
+	age  int
+}
+
+func main() {
+	l := list.New()
+	// 尾部添加
+	l.PushBack("canon")
+	// 头部添加
+	l.PushFront(67)
+	l.PushFront(Person{"Alime", 11})
+	for i := l.Front(); i != nil; i = i.Next() {
+		fmt.Println(i.Value)
+	}
+	fmt.Println("=================")
+	fmt.Println(l.Front().Value)
+
+	var alime Person = l.Front().Value.(Person)
+	fmt.Println(alime.name)
+}
+
+```
+
+```
+{Alime 11}
+67
+canon
+=================
+{Alime 11}
+Alime
+```
+
+
 
 # 2 应用使用
 
