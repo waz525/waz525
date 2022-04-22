@@ -53,7 +53,7 @@ docker run --detach \
 docker logs -f gitlab
 ```
 
-+ 查看初始密码
++ 查看初始密码（用户名为root）
 
 ```shell
 docker exec -it gitlab grep 'Password:' /etc/gitlab/initial_root_password
