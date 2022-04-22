@@ -20,7 +20,7 @@ mkdir -p $GITLAB_HOME/data
 
 docker run --detach \
   --hostname gitlab.example.com \
-  --publish 8443:443 --publish 8880:80 --publish 8822:22 \
+  --publish 443:443 --publish 80:80 --publish 22:22 \
   --name gitlab \
   --restart always \
   --volume $GITLAB_HOME/config:/etc/gitlab \
@@ -65,9 +65,8 @@ docker exec -it gitlab grep 'Password:' /etc/gitlab/initial_root_password
 
   <https://192.166.1.241:8443>
 
- ## 1.2 配置git
+ ## 1.2 配置git（可不做）
 
-+ 配置文件： /etc/gitlab/gitlab.rb
 + 进入docker 或直接配置
 
 ```shell
@@ -76,14 +75,137 @@ docker exec -it gitlab /bin/bash
 # docker exec -it gitlab editor /etc/gitlab/gitlab.rb
 ```
 
-+ 配置
++ 配置文件： /etc/gitlab/gitlab.rb
+
+```shell
+# For HTTP
+external_url 'http://10.1.2.93:8880'     ### 此处端口影响gitlab的侦听端口，建议使用侦听端口作映射
+# For ssh
+gitlab_rails['gitlab_shell_ssh_port'] = 8822                                     
+```
+
 + 重启docker
 
 ```shell
 docker restart gitlab
 ```
 
+## 1.3 创建用户
 
+界面操作（略）
+
+## 1.4 生成ssh-rsa
+
++ 在本地机器（客户端）上，执行ssh-keygen，生成  ~/.ssh/id_rsa.pub  和 ~/.ssh/id_rsa
++ 将 ~/.ssh/id_rsa.pub的内容拷贝到 用户 --> Perferences  --> SSH Keys
+
+## 1.5 实例
+
+### 1.5.1 Git全局设置（设置一次即可）
+
+```shell
+fh@fh-OptiPlex-5080:~/golang/channel-go$ git config --global user.name "X4033"
+fh@fh-OptiPlex-5080:~/golang/channel-go$ git config --global user.email "315406167@qq.com"
+```
+
+### 1.5.2 拉取远程
+
+```shell
+h@fh-OptiPlex-5080:~/golang$  git clone git@gitlab.mysite.com:X4033/channel-go.git
+Cloning into 'channel-go'...
+remote: Enumerating objects: 3, done.
+remote: Counting objects: 100% (3/3), done.
+remote: Compressing objects: 100% (2/2), done.
+remote: Total 3 (delta 0), reused 0 (delta 0), pack-reused 0
+Receiving objects: 100% (3/3), done.
+fh@fh-OptiPlex-5080:~/golang$ ls
+channel-go
+fh@fh-OptiPlex-5080:~/golang$ cd channel-go
+fh@fh-OptiPlex-5080:~/golang/channel-go$ vim 001.go
+fh@fh-OptiPlex-5080:~/golang/channel-go$ go run 001.go
+读协程开启: 2022-04-22 16:57:03.23609096 +0800 CST m=+0.000033833
+写协程开启: 2022-04-22 16:57:03.236109792 +0800 CST m=+0.000052685
+写入成功: 2022-04-22 16:57:06.238310218 +0800 CST m=+3.002253218
+读取成功: 1 2022-04-22 16:57:06.238304143 +0800 CST m=+3.002247153
+ok
+fh@fh-OptiPlex-5080:~/golang/channel-go$ ls
+001.go  README.md
+fh@fh-OptiPlex-5080:~/golang/channel-go$ git branch 
+* main
+fh@fh-OptiPlex-5080:~/golang/channel-go$ git branch -a
+* main
+  remotes/origin/HEAD -> origin/main
+  remotes/origin/main
+fh@fh-OptiPlex-5080:~/golang/channel-go$ git status 
+On branch main
+Your branch is up to date with 'origin/main'.
+
+Untracked files:
+  (use "git add <file>..." to include in what will be committed)
+	001.go
+
+nothing added to commit but untracked files present (use "git add" to track)
+fh@fh-OptiPlex-5080:~/golang/channel-go$ 
+```
+
+### 1.5.3 合并到远程
+
+```shell
+fh@fh-OptiPlex-5080:~/golang/channel-go$ git add .  
+fh@fh-OptiPlex-5080:~/golang/channel-go$ git commit -m "001.go"
+[main ef0d292] 001.go
+ 1 file changed, 31 insertions(+)
+ create mode 100644 001.go
+fh@fh-OptiPlex-5080:~/golang/channel-go$ git push -u origin main
+Enumerating objects: 4, done.
+Counting objects: 100% (4/4), done.
+Delta compression using up to 12 threads
+Compressing objects: 100% (3/3), done.
+Writing objects: 100% (3/3), 566 bytes | 566.00 KiB/s, done.
+Total 3 (delta 0), reused 0 (delta 0), pack-reused 0
+To gitlab.mysite.com:X4033/channel-go.git
+   c6f3ebf..ef0d292  main -> main
+Branch 'main' set up to track remote branch 'main' from 'origin'.
+fh@fh-OptiPlex-5080:~/golang/channel-go$ 
+
+```
+
+
+
+### 1.5.4 同步远程到本地
+
+```shell
+fh@fh-OptiPlex-5080:~/golang/channel-go$ git fetch 
+remote: Enumerating objects: 5, done.
+remote: Counting objects: 100% (5/5), done.
+remote: Compressing objects: 100% (3/3), done.
+remote: Total 3 (delta 1), reused 0 (delta 0), pack-reused 0
+Unpacking objects: 100% (3/3), 283 bytes | 283.00 KiB/s, done.
+From gitlab.mysite.com:X4033/channel-go
+   ef0d292..6121296  main       -> origin/main
+fh@fh-OptiPlex-5080:~/golang/channel-go$
+fh@fh-OptiPlex-5080:~/golang/channel-go$ git merge origin master
+merge: master - not something we can merge
+fh@fh-OptiPlex-5080:~/golang/channel-go$  
+fh@fh-OptiPlex-5080:~/golang/channel-go$ git pull
+hint: Pulling without specifying how to reconcile divergent branches is
+hint: discouraged. You can squelch this message by running one of the following
+hint: commands sometime before your next pull:
+hint: 
+hint:   git config pull.rebase false  # merge (the default strategy)
+hint:   git config pull.rebase true   # rebase
+hint:   git config pull.ff only       # fast-forward only
+hint: 
+hint: You can replace "git config" with "git config --global" to set a default
+hint: preference for all repositories. You can also pass --rebase, --no-rebase,
+hint: or --ff-only on the command line to override the configured default per
+hint: invocation.
+Updating ef0d292..6121296
+Fast-forward
+ 001.go | 4 +++-
+ 1 file changed, 3 insertions(+), 1 deletion(-)
+fh@fh-OptiPlex-5080:~/golang/channel-go$
+```
 
 
 
@@ -91,7 +213,65 @@ docker restart gitlab
 
 # 2 Git命令
 
-## 2.1 git命令大全
+## 2.1 git命令实践（朱）
+
+```shell
+# Git全局设置（设置一次即可）
+git config --global user.name "zhu"
+git config --global user.email "zhu@admin.com"
+
+# 推送现有文件夹
+cd existing_folder
+git init
+git remote add origin git@61.155.203.87:zhu/fhops.git
+git add .
+git commit -m "Initial commit"
+git push -u origin master
+
+# 创建一个新仓库（未测试）
+git clone git@61.155.203.87:zhu/fhops.git
+cd fhops
+touch README.md
+git add README.md
+git commit -m "add README"
+git push -u origin master
+
+# 推送现有的Git仓库（未测试）
+cd existing_repo
+git remote rename origin old-origin
+git remote add origin git@61.155.203.87:zhu/fhops.git
+git push -u origin --all
+git push -u origin --tags
+
+*********** 实战 ***********
+# 拉取整个项目（首次初始化使用）
+git clone git@61.155.203.87:zhu/fhops.git
+
+# 查看分支
+git branch                  # 查看本地分支
+git branch -a               # 查看所有分支
+
+git checkout -b x0854       # 创建分支（x0854）
+git status                  # 查看状态
+
+# 推送新分支
+git add .                   # 保存本地修改
+git commit -m "xxxx"        # 添加描述信息
+git push -u origin x0854    # 推送分支名称（x0854）
+
+# 从master获取
+git fetch                   # 获取更新
+git merge origin master     # 获取最新master数据
+git pull					# 获取最新master数据
+
+# 删除分支
+git checkout master         # 切换到master分支
+git branch -d x0854         # 删除本地分支
+git push origin -d x0854    # 删除远程分支
+
+```
+
+## 2.2 git命令大全
 
 ### git config
 
@@ -479,68 +659,6 @@ $ git rm --cached
 
 
 
-## 2.2 git命令实践（朱）
-
-```shell
-# Git全局设置（设置一次即可）
-git config --global user.name "zhu"
-git config --global user.email "zhu@admin.com"
-
-# 推送现有文件夹
-cd existing_folder
-git init
-git remote add origin git@61.155.203.87:zhu/fhops.git
-git add .
-git commit -m "Initial commit"
-git push -u origin master
-
-# 创建一个新仓库（未测试）
-git clone git@61.155.203.87:zhu/fhops.git
-cd fhops
-touch README.md
-git add README.md
-git commit -m "add README"
-git push -u origin master
-
-# 推送现有的Git仓库（未测试）
-cd existing_repo
-git remote rename origin old-origin
-git remote add origin git@61.155.203.87:zhu/fhops.git
-git push -u origin --all
-git push -u origin --tags
-
-*********** 实战 ***********
-# 拉取整个项目（首次初始化使用）
-git clone git@61.155.203.87:zhu/fhops.git
-
-# 查看分支
-git branch                  # 查看本地分支
-git branch -a               # 查看所有分支
-
-git checkout -b x0854       # 创建分支（x0854）
-git status                  # 查看状态
-
-# 推送新分支
-git add .                   # 保存本地修改
-git commit -m "xxxx"        # 添加描述信息
-git push -u origin x0854    # 推送分支名称（x0854）
-
-# 从master获取
-git fetch                   # 获取更新
-git merge origin master     # 获取最新master数据
-
-# 删除分支
-git checkout master         # 切换到master分支
-git branch -d x0854         # 删除本地分支
-git push origin -d x0854    # 删除远程分支
-
-*********** 实战20220402 ***********
-# 带token摘取git内容，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为ydsl01的token，有效期到20230402
-git clone https://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@github.com/ydsl01/kubernetes-study-documents-51.git
-
-```
-
-
 # 3 Git操作场景示例
 
 ## 3.1  删除掉本地不存在的远程分支
@@ -555,6 +673,17 @@ $ git pull -p
 $ git fetch -p
 $ git fetch --prune origin
 ```
+
+## 3.2 带token摘取git内容
+
+```shell
+
+# 带token摘取git内容，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为ydsl01的token，有效期到20230402
+git clone https://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@github.com/ydsl01/kubernetes-study-documents-51.git
+
+```
+
+
 
 # END
 
