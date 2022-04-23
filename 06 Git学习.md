@@ -56,12 +56,15 @@ docker logs -f gitlab
 + 查看初始密码（用户名为root）
 
 ```shell
-docker exec -it gitlab grep 'Password:' /etc/gitlab/initial_root_password
+[root@Docker1 ~]# docker exec -it gitlab grep 'Password:' /etc/gitlab/initial_root_password
+Password: 2eIIr+azQwg/7spjNCkFW4g1Tpkk4xenqMcNBkvVgYg=
+[root@Docker1 ~]#
+
 ```
 
 + 访问URL: 
 
-   <http://192.166.1.241:8880>
+   <http://192.166.1.241/>
 
   <https://192.166.1.241:8443>
 
@@ -94,126 +97,263 @@ docker restart gitlab
 
 界面操作（略）
 
+http://192.166.1.241/admin/users
+
 ## 1.4 生成ssh-rsa
 
 + 在本地机器（客户端）上，执行ssh-keygen，生成  ~/.ssh/id_rsa.pub  和 ~/.ssh/id_rsa
 + 将 ~/.ssh/id_rsa.pub的内容拷贝到 用户 --> Perferences  --> SSH Keys
 
-## 1.5 实例
+# 2 Git实验
 
-### 1.5.1 Git全局设置（设置一次即可）
+## 2.1 实例一 远程已有仓库
+
+在界面 上创建仓库（略）
+
+### 2.1.1 Git全局设置（设置一次即可）
 
 ```shell
-fh@fh-OptiPlex-5080:~/golang/channel-go$ git config --global user.name "X4033"
-fh@fh-OptiPlex-5080:~/golang/channel-go$ git config --global user.email "315406167@qq.com"
+[root@Docker1 golang]# git config --global user.name "X4033"
+[root@Docker1 golang]# git config --global user.email "X4033@fh.com"
+[root@Docker1 channel-go]# git config --list
+user.name=X4033
+user.email=X4033@fh.com
+core.repositoryformatversion=0
+core.filemode=true
+core.bare=false
+core.logallrefupdates=true
+remote.origin.url=git@192.166.1.241:X4033/channel-go.git
+remote.origin.fetch=+refs/heads/*:refs/remotes/origin/*
+branch.main.remote=origin
+branch.main.merge=refs/heads/main
+branch.test1.remote=origin
+branch.test1.merge=refs/heads/test1
+[root@Docker1 channel-go]#
 ```
 
-### 1.5.2 拉取远程
+### 2.1.2 拉取远程，建立分支
 
 ```shell
-h@fh-OptiPlex-5080:~/golang$  git clone git@gitlab.mysite.com:X4033/channel-go.git
+##########################  clone远程仓库到本地
+[root@Docker1 golang]# git clone git@192.166.1.241:X4033/channel-go.git
 Cloning into 'channel-go'...
+The authenticity of host '192.166.1.241 (192.166.1.241)' can't be established.
+ECDSA key fingerprint is SHA256:yeWpBCYFRntZb8prLgT3qnPsyJCNMP8V3+GNBauUiqw.
+ECDSA key fingerprint is MD5:17:3f:c3:a3:3e:7e:d2:10:37:eb:03:22:9d:7d:92:0c.
+Are you sure you want to continue connecting (yes/no)? yes
+Warning: Permanently added '192.166.1.241' (ECDSA) to the list of known hosts.
 remote: Enumerating objects: 3, done.
 remote: Counting objects: 100% (3/3), done.
-remote: Compressing objects: 100% (2/2), done.
 remote: Total 3 (delta 0), reused 0 (delta 0), pack-reused 0
 Receiving objects: 100% (3/3), done.
-fh@fh-OptiPlex-5080:~/golang$ ls
-channel-go
-fh@fh-OptiPlex-5080:~/golang$ cd channel-go
-fh@fh-OptiPlex-5080:~/golang/channel-go$ vim 001.go
-fh@fh-OptiPlex-5080:~/golang/channel-go$ go run 001.go
-读协程开启: 2022-04-22 16:57:03.23609096 +0800 CST m=+0.000033833
-写协程开启: 2022-04-22 16:57:03.236109792 +0800 CST m=+0.000052685
-写入成功: 2022-04-22 16:57:06.238310218 +0800 CST m=+3.002253218
-读取成功: 1 2022-04-22 16:57:06.238304143 +0800 CST m=+3.002247153
-ok
-fh@fh-OptiPlex-5080:~/golang/channel-go$ ls
-001.go  README.md
-fh@fh-OptiPlex-5080:~/golang/channel-go$ git branch 
+[root@Docker1 golang]# 
+[root@Docker1 golang]# cd channel-go/
+[root@Docker1 channel-go]# ls
+README.md
+[root@Docker1 channel-go]# git branch		# 查看本地分支
 * main
-fh@fh-OptiPlex-5080:~/golang/channel-go$ git branch -a
+[root@Docker1 channel-go]# git branch  -a	# 查看所有分支
 * main
   remotes/origin/HEAD -> origin/main
   remotes/origin/main
-fh@fh-OptiPlex-5080:~/golang/channel-go$ git status 
-On branch main
-Your branch is up to date with 'origin/main'.
+[root@Docker1 channel-go]# git checkout -b "test1"     #建立test1分支（本地）
+Switched to a new branch 'test1'
+[root@Docker1 channel-go]# git branch
+  main
+* test1
+[root@Docker1 channel-go]# git branch  -a
+  main
+* test1
+  remotes/origin/HEAD -> origin/main
+  remotes/origin/main
+[root@Docker1 channel-go]# git status
+# On branch test1
+nothing to commit, working directory clean
+[root@Docker1 channel-go]#
+[root@Docker1 channel-go]# git push origin test1    #推送test1分支到远程，创建远程分支
+Total 0 (delta 0), reused 0 (delta 0)
+remote:
+remote: To create a merge request for test1, visit:
+remote:   http://gitlab.example.com/X4033/channel-go/-/merge_requests/new?merge_request%5Bsource_branch%5D=test1
+remote:
+To git@192.166.1.241:X4033/channel-go.git
+ * [new branch]      test1 -> test1
+[root@Docker1 channel-go]# git push origin test1
+Everything up-to-date
+[root@Docker1 channel-go]#
 
-Untracked files:
-  (use "git add <file>..." to include in what will be committed)
-	001.go
-
-nothing added to commit but untracked files present (use "git add" to track)
-fh@fh-OptiPlex-5080:~/golang/channel-go$ 
 ```
 
-### 1.5.3 合并到远程
+### 2.1.3 合并到远程
 
 ```shell
-fh@fh-OptiPlex-5080:~/golang/channel-go$ git add .  
-fh@fh-OptiPlex-5080:~/golang/channel-go$ git commit -m "001.go"
-[main ef0d292] 001.go
- 1 file changed, 31 insertions(+)
- create mode 100644 001.go
-fh@fh-OptiPlex-5080:~/golang/channel-go$ git push -u origin main
-Enumerating objects: 4, done.
-Counting objects: 100% (4/4), done.
-Delta compression using up to 12 threads
+[root@Docker1 channel-go]# git add .
+[root@Docker1 channel-go]# git commit -m "01.go"
+[test1 47a7507] 01.go
+ 1 file changed, 14 insertions(+)
+ create mode 100644 01.go
+[root@Docker1 channel-go]# 
+##########################  推送到远程分支
+[root@Docker1 channel-go]# git push -u origin test1	
+Counting objects: 4, done.
 Compressing objects: 100% (3/3), done.
-Writing objects: 100% (3/3), 566 bytes | 566.00 KiB/s, done.
-Total 3 (delta 0), reused 0 (delta 0), pack-reused 0
-To gitlab.mysite.com:X4033/channel-go.git
-   c6f3ebf..ef0d292  main -> main
-Branch 'main' set up to track remote branch 'main' from 'origin'.
-fh@fh-OptiPlex-5080:~/golang/channel-go$ 
-
+Writing objects: 100% (3/3), 457 bytes | 0 bytes/s, done.
+Total 3 (delta 0), reused 0 (delta 0)
+remote:
+remote: To create a merge request for test1, visit:
+remote:   http://gitlab.example.com/X4033/channel-go/-/merge_requests/new?merge_request%5Bsource_branch%5D=test1
+remote:
+To git@192.166.1.241:X4033/channel-go.git
+   ccf75da..04d8b6d  test1 -> test1
+Branch test1 set up to track remote branch test1 from origin.
+[root@Docker1 channel-go]#
 ```
 
+> 1. <font color=red>开发者</font>访问 http://192.166.1.241/X4033/channel-go/-/merge_requests/new?merge_request%5Bsource_branch%5D=test1 ，申请合并到主分支；
+> 2. <font color=red>管理员</font>访问 http://192.166.1.241/X4033/channel-go/-/merge_requests/1 ， 进行合并操作；<font color=orange>在合并时不要删除源分支，否则开发者的分支就没了。</font>
 
+### 2.1.4 同步远程主分支到本地
 
-### 1.5.4 同步远程到本地
+> 此操作同步共同开发者合并的代码；通过界面操作在main分支下增加一个名为ingress-controller-1.yml.yaml的文件；
 
 ```shell
-fh@fh-OptiPlex-5080:~/golang/channel-go$ git fetch 
-remote: Enumerating objects: 5, done.
-remote: Counting objects: 100% (5/5), done.
-remote: Compressing objects: 100% (3/3), done.
-remote: Total 3 (delta 1), reused 0 (delta 0), pack-reused 0
-Unpacking objects: 100% (3/3), 283 bytes | 283.00 KiB/s, done.
-From gitlab.mysite.com:X4033/channel-go
-   ef0d292..6121296  main       -> origin/main
-fh@fh-OptiPlex-5080:~/golang/channel-go$
-fh@fh-OptiPlex-5080:~/golang/channel-go$ git merge origin master
-merge: master - not something we can merge
-fh@fh-OptiPlex-5080:~/golang/channel-go$  
-fh@fh-OptiPlex-5080:~/golang/channel-go$ git pull
-hint: Pulling without specifying how to reconcile divergent branches is
-hint: discouraged. You can squelch this message by running one of the following
-hint: commands sometime before your next pull:
-hint: 
-hint:   git config pull.rebase false  # merge (the default strategy)
-hint:   git config pull.rebase true   # rebase
-hint:   git config pull.ff only       # fast-forward only
-hint: 
-hint: You can replace "git config" with "git config --global" to set a default
-hint: preference for all repositories. You can also pass --rebase, --no-rebase,
-hint: or --ff-only on the command line to override the configured default per
-hint: invocation.
-Updating ef0d292..6121296
+[root@Docker1 channel-go]# git fetch   #从远程获取代码库
+remote: Enumerating objects: 6, done.
+remote: Counting objects: 100% (6/6), done.
+remote: Compressing objects: 100% (4/4), done.
+remote: Total 4 (delta 0), reused 1 (delta 0), pack-reused 0
+Unpacking objects: 100% (4/4), done.
+From 192.166.1.241:X4033/channel-go
+   ccf75da..db521c1  main       -> origin/main
+[root@Docker1 channel-go]# ls
+01.go  README.md
+[root@Docker1 channel-go]# 
+##########################  将远程仓库里主分支的数据合并到本地分支
+[root@Docker1 channel-go]# git merge origin test1 
+Updating 04d8b6d..db521c1
 Fast-forward
- 001.go | 4 +++-
- 1 file changed, 3 insertions(+), 1 deletion(-)
-fh@fh-OptiPlex-5080:~/golang/channel-go$
+ ingress-controller-1.yml.yaml | 682 +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+ 1 file changed, 682 insertions(+)
+ create mode 100644 ingress-controller-1.yml.yaml
+[root@Docker1 channel-go]#
+[root@Docker1 channel-go]# ls
+01.go  ingress-controller-1.yml.yaml  README.md
+[root@Docker1 channel-go]#
+[root@Docker1 channel-go]# git pull origin test1
+From 192.166.1.241:X4033/channel-go
+ * branch            test1      -> FETCH_HEAD
+Already up-to-date.
+[root@Docker1 channel-go]#
+
+```
+
+### 2.1.5 回退到历史commit
+
+```shell
+########################### 先使用git log查看历史版本
+[root@Docker1 channel-go]# git log
+commit 8c0af9a50158f9f170682a26463a32de52213e41
+Author: X4033 <X4033@fh.com>
+Date:   Sat Apr 23 18:36:12 2022 +0800
+
+    01.go_update01
+
+commit db521c1a793fdcf29c1ffe3d91ab2401dd21e11a
+Author: X4033 <x4033@fh.com>
+Date:   Sat Apr 23 10:10:10 2022 +0000
+
+    Upload New File
+
+commit 84457a539b1875bb35d53c09aadeb1e51d234d33
+Merge: ccf75da 04d8b6d
+Author: X4033 <x4033@fh.com>
+Date:   Sat Apr 23 10:01:47 2022 +0000
+
+    Merge branch 'test1' into 'main'
+
+    01.go
+
+    See merge request X4033/channel-go!1
+
+commit 04d8b6dd8ee8ab8d91bad9250978ec4c71f73310
+Author: X4033 <X4033@fh.com>
+Date:   Sat Apr 23 17:40:02 2022 +0800
+
+    01.go
+
+commit ccf75dabd3c9342bc07eadb2fe2653de303ad41f
+Author: X4033 <x4033@fh.com>
+Date:   Fri Apr 22 16:27:58 2022 +0000
+
+    Initial commit
+[root@Docker1 channel-go]#
+########################### git reset强制恢复到历史版本
+[root@Docker1 channel-go]# git reset --hard  04d8b6dd8ee8ab8d91bad9250978ec4c71f73310
+HEAD is now at 04d8b6d 01.go
+[root@Docker1 channel-go]# ls
+01.go  README.md
+[root@Docker1 channel-go]# 
+[root@Docker1 channel-go]# vim 01.go
+########################### 修改文件后，提交远程；需提前把远程分支删除，否则会rejected
+[root@Docker1 channel-go]# git add .
+[root@Docker1 channel-go]# git commit -m "01.go_update02"
+[test1 ddddd6f] 01.go_update02
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+[root@Docker1 channel-go]# ls
+01.go  README.md
+[root@Docker1 channel-go]# 
+[root@Docker1 channel-go]# git push -u origin test1
+Counting objects: 5, done.
+Compressing objects: 100% (3/3), done.
+Writing objects: 100% (3/3), 296 bytes | 0 bytes/s, done.
+Total 3 (delta 1), reused 0 (delta 0)
+remote:
+remote: To create a merge request for test1, visit:
+remote:   http://gitlab.example.com/X4033/channel-go/-/merge_requests/new?merge_request%5Bsource_branch%5D=test1
+remote:
+To git@192.166.1.241:X4033/channel-go.git
+ * [new branch]      test1 -> test1
+Branch test1 set up to track remote branch test1 from origin.
+[root@Docker1 channel-go]#
+```
+
+> 1. 此时不能同步远程到本地，否则文件内容恢复；
+> 2. 应先删除远程同名分支；
+> 3. 修改文件后，合并到远程，并提交merge申请，同步到主分支中；
+> 4. 再同步远程分支到本地；
+
+
+
+
+# 3 Git其它示例
+
+## 3.1  删除掉本地不存在的远程分支
+
+多人合作开发时，如果远程的分支被其他开发删除掉，在本地执行 `git branch --all` 依然会显示该远程分支，可使用下列的命令进行删除：
+
+```shell
+# 使用 pull 命令，添加 -p 参数
+$ git pull -p
+
+# 等同于下面的命令
+$ git fetch -p
+$ git fetch --prune origin
+```
+
+## 3.2 带token摘取git内容
+
+```shell
+
+# 带token摘取git内容，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为ydsl01的token，有效期到20230402
+git clone https://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@github.com/ydsl01/kubernetes-study-documents-51.git
+
 ```
 
 
 
+# 附件
 
-
-# 2 Git命令
-
-## 2.1 git命令实践（朱）
+## 附件1 git命令实践（朱）
 
 ```shell
 # Git全局设置（设置一次即可）
@@ -271,7 +411,7 @@ git push origin -d x0854    # 删除远程分支
 
 ```
 
-## 2.2 git命令大全
+## 附件2 git命令大全
 
 ### git config
 
@@ -654,33 +794,6 @@ $ git rm -r <文件夹路径>
 
 # 移除跟踪指定的文件，在本地仓库的文件夹中保留该文件
 $ git rm --cached
-```
-
-
-
-
-# 3 Git操作场景示例
-
-## 3.1  删除掉本地不存在的远程分支
-
-多人合作开发时，如果远程的分支被其他开发删除掉，在本地执行 `git branch --all` 依然会显示该远程分支，可使用下列的命令进行删除：
-
-```shell
-# 使用 pull 命令，添加 -p 参数
-$ git pull -p
-
-# 等同于下面的命令
-$ git fetch -p
-$ git fetch --prune origin
-```
-
-## 3.2 带token摘取git内容
-
-```shell
-
-# 带token摘取git内容，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为ydsl01的token，有效期到20230402
-git clone https://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@github.com/ydsl01/kubernetes-study-documents-51.git
-
 ```
 
 
