@@ -56,7 +56,7 @@ docker logs -f gitlab
 + 查看初始密码（用户名为root）
 
 ```shell
-[root@Docker1 ~]# docker exec -it gitlab grep 'Password:' /etc/gitlab/initial_root_password
+    [root@Docker1 ~]# docker exec -it gitlab grep 'Password:' /etc/gitlab/initial_root_password
 Password: 2eIIr+azQwg/7spjNCkFW4g1Tpkk4xenqMcNBkvVgYg=
 [root@Docker1 ~]#
 
@@ -103,6 +103,95 @@ http://192.166.1.241/admin/users
 
 + 在本地机器（客户端）上，执行ssh-keygen，生成  ~/.ssh/id_rsa.pub  和 ~/.ssh/id_rsa
 + 将 ~/.ssh/id_rsa.pub的内容拷贝到 用户 --> Perferences  --> SSH Keys
+
+## 1.5 利用docker-compose启动容器
+
+### 1.5.1 docker-compose.yml
+
+```shell
+[root@Docker1 gitlab]# pwd
+/home/gitlab
+[root@Docker1 gitlab]# ls
+config  data  docker-compose.yml  logs
+[root@Docker1 gitlab]#
+[root@Docker1 gitlab]# cat docker-compose.yml
+version: '2.0'
+services:
+  gitlab:
+    image: gitlab/gitlab-ee:latest
+    hostname: 192.166.1.241
+    # restart: always
+    container_name: gitlab2
+    ports:
+      - "8053:443"
+      - "8052:80"
+      - "60022:22"
+    volumes:
+      - /home/gitlab/config:/etc/gitlab
+      - /home/gitlab/logs:/var/log/gitlab
+      - /home/gitlab/data:/var/opt/gitlab
+    shm_size: 256m
+
+[root@Docker1 gitlab]#
+```
+
+### 1.5.2 启动容器
+
+> 在docker-compose.yml的目录下执行 `docker-compose up -d`
+
+```shell
+[root@Docker1 gitlab]# ls
+config  data  docker-compose.yml  logs
+[root@Docker1 gitlab]# docker-compose up -d      # -d 是放后台运行
+[+] Running 2/2
+ ⠿ Network gitlab_default  Created         0.4s
+ ⠿ Container gitlab2       Started         0.8s
+[root@Docker1 gitlab]#
+[root@Docker1 gitlab]# docker ps
+CONTAINER ID        IMAGE                     COMMAND             CREATED              STATUS                                 PORTS                                                                NAMES
+56a07f00c4c6        gitlab/gitlab-ee:latest   "/assets/wrapper"   About a minute ago   Up About a minute (health: starting)   0.0.0.0:60022->22/tcp, 0.0.0.0:8052->80/tcp, 0.0.0.0:8053->443/tcp   gitlab2
+[root@Docker1 gitlab]#
+```
+
+### 1.5.3 停止容器
+
+>  在docker-compose.yml的目录下执行 `docker-compose down`
+
+```shell
+[root@Docker1 gitlab]# ls
+config  data  docker-compose.yml  logs
+[root@Docker1 gitlab]# docker-compose down
+[+] Running 2/2
+ ⠿ Container gitlab2       Removed        11.0s
+ ⠿ Network gitlab_default  Removed        0.4s
+[root@Docker1 gitlab]#
+[root@Docker1 gitlab]# docker ps
+CONTAINER ID        IMAGE               COMMAND             CREATED             STATUS              PORTS               NAMES
+[root@Docker1 gitlab]#
+```
+
+
+
+### 1.5.4 带端口的git clone
+
+```shell
+[root@Docker1 golang]# git clone ssh://git@192.166.1.241:60022/X4033/channel-go.git
+Cloning into 'channel-go'...
+The authenticity of host '[192.166.1.241]:60022 ([192.166.1.241]:60022)' can't be established.
+ECDSA key fingerprint is SHA256:BP+o+BZrRIJFO0Rufh2T8h/3HW/UwZAlYZ8PWS4l+PY.
+ECDSA key fingerprint is MD5:e1:c9:fe:de:84:b4:db:69:cc:4d:50:9a:d0:1a:3d:a0.
+Are you sure you want to continue connecting (yes/no)? yes
+Warning: Permanently added '[192.166.1.241]:60022' (ECDSA) to the list of known hosts.
+remote: Enumerating objects: 3, done.
+remote: Counting objects: 100% (3/3), done.
+remote: Total 3 (delta 0), reused 0 (delta 0), pack-reused 0
+Receiving objects: 100% (3/3), done.
+[root@Docker1 golang]# ls
+channel-go
+[root@Docker1 golang]# 
+```
+
+
 
 # 2 Git实验
 
@@ -321,6 +410,61 @@ Branch test1 set up to track remote branch test1 from origin.
 > 2. 应先删除远程同名分支；
 > 3. 修改文件后，合并到远程，并提交merge申请，同步到主分支中；
 > 4. 再同步远程分支到本地；
+
+## 2.2 通过命令行创建新项目
+
+```shell
+############################# 1. 创建一个空目录
+[root@Docker1 golang]# mkdir interface-go
+[root@Docker1 golang]# cd interface-go/
+[root@Docker1 interface-go]# ls
+############################# 2. 初始化git本地库
+[root@Docker1 interface-go]# git init
+[root@Docker1 interface-go]# cp /home/golang/golang/21.go .
+[root@Docker1 interface-go]# ll
+total 4
+-rw-r--r-- 1 root root 654 Apr 24 09:00 21.go
+[root@Docker1 interface-go]#
+############################# 3. 提交一个commit
+[root@Docker1 interface-go]# git add .
+[root@Docker1 interface-go]# git commit -m "Initial commit"
+[master (root-commit) a35fb5b] Initial commit
+ 1 file changed, 31 insertions(+)
+ create mode 100644 21.go
+[root@Docker1 interface-go]# 
+############################# 4. 查看本地分支名
+[root@Docker1 interface-go]# git branch
+* master
+[root@Docker1 interface-go]#
+############################# 5. 同步到远程仓库，网页上可以看到新项目
+[root@Docker1 interface-go]# git push -u origin master
+Counting objects: 3, done.
+Compressing objects: 100% (2/2), done.
+Writing objects: 100% (3/3), 586 bytes | 0 bytes/s, done.
+Total 3 (delta 0), reused 0 (delta 0)
+remote:
+remote:
+remote: The private project X4033/interface-go was successfully created.
+remote:
+remote: To configure the remote, run:
+remote:   git remote add origin git@gitlab.example.com:X4033/interface-go.git
+remote:
+remote: To view the project, visit:
+remote:   http://gitlab.example.com/X4033/interface-go
+remote:
+remote:
+remote:
+To git@192.166.1.241:X4033/interface-go.git
+ * [new branch]      master -> master
+Branch master set up to track remote branch master from origin.
+[root@Docker1 interface-go]#
+```
+
+
+
+
+
+
 
 
 
