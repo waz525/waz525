@@ -1237,6 +1237,71 @@ I am iPhone, I can call you!
 [root@5d09d6b9f9d5 golang]#
 ```
 
+### 1.6.2 接口实例
+
+```go
+package main
+
+import "fmt"
+
+type Pet interface {
+	SetName(string)
+	GetName() string
+}
+
+type Dog struct {
+	name string
+	age  int
+}
+
+func (dog *Dog) SetName(name string) {
+	dog.name = name
+}
+
+func (dog Dog) GetName() string {
+	return dog.name
+}
+
+func (dog *Dog) SetAge(num int) {
+	dog.age = num
+}
+
+func (dog *Dog) GetAge() int {
+	return dog.age
+}
+
+func main() {
+	fmt.Println("================")
+	dog := Dog{name: "Petty"}
+	var pet Pet = &dog
+	fmt.Println(dog)
+	fmt.Println(pet)
+	fmt.Println("================")
+	pet.SetName("Slime")
+	fmt.Println(dog.GetName())
+	fmt.Println(pet.GetName())
+	fmt.Println("================")
+	dog.SetAge(9)
+	fmt.Println(dog)
+	fmt.Println(pet)
+	fmt.Println("================")
+}
+
+```
+
+```shell
+================
+{Petty 0}
+&{Petty 0}
+================
+Slime
+Slime
+================
+{Slime 9}
+&{Slime 9}
+================
+```
+
 
 
 ## 1.7 错误处理 

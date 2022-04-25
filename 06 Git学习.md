@@ -195,7 +195,7 @@ channel-go
 
 # 2 Git实验
 
-## 2.1 实例一 远程已有仓库
+## 2.1 实例一：远程已有仓库
 
 在界面 上创建仓库（略）
 
@@ -411,7 +411,7 @@ Branch test1 set up to track remote branch test1 from origin.
 > 3. 修改文件后，合并到远程，并提交merge申请，同步到主分支中；
 > 4. 再同步远程分支到本地；
 
-## 2.2 通过命令行创建新项目
+## 2.2 实验二：命令行创建新项目
 
 ```shell
 ############################# 1. 创建一个空目录
@@ -492,6 +492,98 @@ $ git fetch --prune origin
 git clone https://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@github.com/ydsl01/kubernetes-study-documents-51.git
 
 ```
+
+
+
+# 11 Jenkins
+
+## 11.1 Docker安装Jenkins
+
+> https://www.jenkins.io/doc/book/installing/docker/
+
+```shell
+############################# 1. 创建一个名为jenkins的网络
+[root@Docker1 ~]# docker network create jenkins
+55efd6686075d99bb30fc03e750480628427765efe6203ca3786ad3681253510
+############################# 2. 获取远程jenkins版本包
+[root@Docker1 ~]# docker pull jenkins/jenkins:2.332.2-jdk11
+Trying to pull repository docker.io/jenkins/jenkins ...
+2.332.2-jdk11: Pulling from docker.io/jenkins/jenkins
+dbba69284b27: Pull complete
+7a9cfc1d8bc9: Pull complete
+714fad1b5f60: Pull complete
+1c33b24d149a: Pull complete
+ae5685b28918: Pull complete
+559d6c32b276: Pull complete
+59d799692e51: Pull complete
+37c3ff68dde1: Pull complete
+0b319955f911: Pull complete
+633e98b0c3ff: Pull complete
+afdef6b9454b: Pull complete
+c9fc43dc7764: Pull complete
+978ba18a6875: Pull complete
+8a7228030cbd: Pull complete
+02faeb6b9508: Pull complete
+4feb05403fe4: Pull complete
+c81d57bc88d8: Pull complete
+Digest: sha256:97fbf50e6ba97c25efaf64590b4ed6fcc64b551b1e09c5125a1752ab284a73ad
+Status: Downloaded newer image for docker.io/jenkins/jenkins:2.332.2-jdk11
+[root@Docker1 ~]#
+############################# 3. 启动docker:dind容器（docker in docker）
+[root@Docker1 ~]# docker run --name jenkins-docker --rm --detach \
+>   --privileged --network jenkins --network-alias docker \
+>   --env DOCKER_TLS_CERTDIR=/certs \
+>   --volume jenkins-docker-certs:/certs/client \
+>   --volume jenkins-data:/var/jenkins_home \
+>   --publish 2376:2376 \
+>   docker:dind --storage-driver overlay2
+Unable to find image 'docker:dind' locally
+Trying to pull repository docker.io/library/docker ...
+dind: Pulling from docker.io/library/docker
+df9b9388f04a: Pull complete
+c60e3bd692ff: Pull complete
+36df9e333c70: Pull complete
+335507422d7f: Pull complete
+9b18125cc2d2: Pull complete
+cf930f6823a9: Pull complete
+7048a2a9629e: Pull complete
+dd0af8a24b3d: Pull complete
+d4c69def9f22: Pull complete
+2998284497aa: Pull complete
+67900e1c727f: Pull complete
+Digest: sha256:210076c7772f47831afaf7ff200cf431c6cd191f0d0cb0805b1d9a996e99fb5e
+Status: Downloaded newer image for docker.io/docker:dind
+8b9fc22ee9092f7f9e40115959b8e20595bbd7b034c9246ee0202de20accf533
+[root@Docker1 ~]# docker ps
+CONTAINER ID        IMAGE               COMMAND                  CREATED             STATUS              PORTS                              NAMES
+8b9fc22ee909        docker:dind         "dockerd-entrypoin..."   30 seconds ago      Up 29 seconds       2375/tcp, 0.0.0.0:2376->2376/tcp   jenkins-docker
+[root@Docker1 ~]#
+[root@Docker1 ~]# mkdir /home/jenkins
+[root@Docker1 ~]# cd /home/jenkins/
+[root@Docker1 jenkins]# ls
+[root@Docker1 jenkins]# 
+############################# 4. 编辑Dockerfile
+[root@Docker1 jenkins]# vim Dockerfile
+[root@Docker1 jenkins]# cat Dockerfile
+FROM jenkins/jenkins:2.332.2-jdk11
+USER root
+RUN apt-get update && apt-get install -y lsb-release
+RUN curl -fsSLo /usr/share/keyrings/docker-archive-keyring.asc \
+  https://download.docker.com/linux/debian/gpg
+RUN echo "deb [arch=$(dpkg --print-architecture) \
+  signed-by=/usr/share/keyrings/docker-archive-keyring.asc] \
+  https://download.docker.com/linux/debian \
+  $(lsb_release -cs) stable" > /etc/apt/sources.list.d/docker.list
+RUN apt-get update && apt-get install -y docker-ce-cli
+USER jenkins
+RUN jenkins-plugin-cli --plugins "blueocean:1.25.3 docker-workflow:1.28"
+[root@Docker1 jenkins]#
+############################# 5. 构建容器
+[root@Docker1 jenkins]# docker build -t myjenkins-blueocean:2.332.2-1 .
+
+```
+
+
 
 
 
