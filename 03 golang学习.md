@@ -1024,6 +1024,56 @@ slice4 ---> len=5 cap=6 slice=[1 2 3 4 5]
 [root@5d09d6b9f9d5 golang]#
 ```
 
+### 1.4.3 切片为引用类型
+
+> 切片所有的修改都是对底层数组的修改，函数的参数也是传递的指针
+
+```go
+package main
+
+import "fmt"
+
+func change(mList []int) {
+	mList[3] = 12
+}
+
+func main() {
+
+	nList := []int{1, 2, 3, 4, 5, 6, 7, 8, 9, 0}
+	mList := nList[2:6]
+	fmt.Println("mList: ", mList, ", len: ", len(mList), " , cap: ", cap(mList))
+	mList[2] = 11
+	fmt.Println("================> 修改切片元素：")
+	fmt.Println("nList: ", nList)
+	fmt.Println("mList: ", mList)
+	change(mList)
+	fmt.Println("================> 函数修改切片元素：")
+	fmt.Println("nList: ", nList)
+	fmt.Println("mList: ", mList)
+	mList = append(mList, 13)
+	fmt.Println("================> 切片append：")
+	fmt.Println("nList: ", nList)
+	fmt.Println("mList: ", mList)
+
+}
+
+```
+
+```shell
+mList:  [3 4 5 6] , len:  4  , cap:  8
+================> 修改切片元素：
+nList:  [1 2 3 4 11 6 7 8 9 0]
+mList:  [3 4 11 6]
+================> 函数修改切片元素：
+nList:  [1 2 3 4 11 12 7 8 9 0]
+mList:  [3 4 11 12]
+================> 切片append：
+nList:  [1 2 3 4 11 12 13 8 9 0]
+mList:  [3 4 11 12 13]
+```
+
+
+
 ## 1.5 函数
 
 ### 1.5.1 函数定义
@@ -1378,7 +1428,6 @@ errorMsg is:
 ```go
 go 函数名( 参数列表 )
 ```
-
 ```go
 //20.go
 //协程并发
@@ -1567,8 +1616,8 @@ import (
 
 func main() {
 	//创建一个channel
-	//ch := make(chan string, 10)
-	ch := make(chan string)
+	ch := make(chan string, 10)
+	//ch := make(chan string)
 
 	//写数据协程
 	go func() {
@@ -1688,6 +1737,8 @@ func main() {
 	ch := make(chan int)
 	for i := 0; i < 10; i++ {
 		go running(i, ch)
+	}
+    for i := 0; i < 10; i++ {
 		<-ch
 	}
 	fmt.Println("Main End")
@@ -1695,7 +1746,44 @@ func main() {
 
 ```
 
+### 1.8.7 设置线程数
 
+runtime.GOMAXPROCS(逻辑CPU数量)
+
+这里的逻辑CPU数量可以有如下几种数值：
+
+- <1：不修改任何数值。
+- =1：单核心执行。
+- \>1：多核并发执行。
+
+一般情况下，可以使用 runtime.NumCPU() 查询 CPU 数量，并使用 runtime.GOMAXPROCS() 函数进行设置： runtime.GOMAXPROCS(runtime.NumCPU())
+
+```go
+
+package main
+
+import (
+	"fmt"
+	"runtime"
+)
+
+func main() {
+
+	fmt.Println("runtime.NumCPU(): ", runtime.NumCPU())
+
+	fmt.Println("runtime.GOMAXPROCS(): ", runtime.GOMAXPROCS(0))
+	fmt.Println("runtime.GOMAXPROCS(): ", runtime.GOMAXPROCS(2))
+	fmt.Println("runtime.GOMAXPROCS(): ", runtime.GOMAXPROCS(0))
+
+}
+```
+
+```shell
+runtime.NumCPU():  4
+runtime.GOMAXPROCS():  4
+runtime.GOMAXPROCS():  4
+runtime.GOMAXPROCS():  2
+```
 
 
 
@@ -1830,6 +1918,60 @@ canon
 {Alime 11}
 Alime
 ```
+
+## 1.21 测试testing
+
+```go
+//针对Utils包里的Atoi函数进行测试
+package Utils
+
+import ( "testing"  )
+
+func TestAtoi(t *testing.T) {
+        var tests = []struct {
+        input string
+        want int
+    }{
+                {"123",123},
+                {"12",12},
+        }
+
+        for _, test := range tests {
+                if got:=Atoi(test.input) ; got != test.want {
+                        t.Errorf("InArray(%s) = %v  Not  %v", test.input , got , test.want )
+                }
+        }
+}
+
+
+```
+
+```shell
+[root@Worden-1-3 Utils]# go test
+PASS
+ok      _/home/golang/golang/Utils      0.006s
+[root@Worden-1-3 Utils]# go test -v
+=== RUN   TestAtoi
+--- PASS: TestAtoi (0.00s)
+PASS
+ok      _/home/golang/golang/Utils      0.006s
+[root@Worden-1-3 Utils]# go test -cpu 1,2,3 -v
+=== RUN   TestAtoi
+--- PASS: TestAtoi (0.00s)
+=== RUN   TestAtoi
+--- PASS: TestAtoi (0.00s)
+=== RUN   TestAtoi
+--- PASS: TestAtoi (0.00s)
+PASS
+ok      _/home/golang/golang/Utils      0.004s
+[root@Worden-1-3 Utils]# 
+```
+
+## 1.22 上下文context.Context
+
+> https://zhuanlan.zhihu.com/p/375946045
+
+
 
 
 

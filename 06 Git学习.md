@@ -580,7 +580,114 @@ RUN jenkins-plugin-cli --plugins "blueocean:1.25.3 docker-workflow:1.28"
 [root@Docker1 jenkins]#
 ############################# 5. 构建容器
 [root@Docker1 jenkins]# docker build -t myjenkins-blueocean:2.332.2-1 .
-
+Sending build context to Docker daemon  2.56 kB
+Step 1/8 : FROM jenkins/jenkins:2.332.2-jdk11
+ ---> fd576e09d155
+Step 2/8 : USER root
+ ---> Using cache
+ ---> 77de53c8bc40
+STEP 3/8: RUN apt-get update && apt-get install -y lsb-release
+Get:1 http://security.debian.org/debian-security bullseye-security InRelease [44.1 kB]
+Get:2 http://deb.debian.org/debian bullseye InRelease [116 kB]
+Get:3 http://deb.debian.org/debian bullseye-updates InRelease [39.4 kB]
+Get:4 http://deb.debian.org/debian bullseye/main amd64 Packages [8182 kB]
+Get:5 http://security.debian.org/debian-security bullseye-security/main amd64 Packages [126 kB]
+Get:6 http://deb.debian.org/debian bullseye-updates/main amd64 Packages [2596 B]
+Fetched 8510 kB in 4min 41s (30.3 kB/s)
+Reading package lists...
+Reading package lists...
+Building dependency tree...
+Reading state information...
+The following additional packages will be installed:
+  distro-info-data libmpdec3 libpython3-stdlib libpython3.9-minimal
+  libpython3.9-stdlib media-types python3 python3-minimal python3.9
+  python3.9-minimal
+Suggested packages:
+  python3-doc python3-tk python3-venv python3.9-venv python3.9-doc binutils
+  binfmt-support
+The following NEW packages will be installed:
+  distro-info-data libmpdec3 libpython3-stdlib libpython3.9-minimal
+  libpython3.9-stdlib lsb-release media-types python3 python3-minimal
+  python3.9 python3.9-minimal
+0 upgraded, 11 newly installed, 0 to remove and 3 not upgraded.
+Need to get 5157 kB of archives.
+After this operation, 20.0 MB of additional disk space will be used.
+Get:1 http://deb.debian.org/debian bullseye/main amd64 libpython3.9-minimal amd64 3.9.2-1 [801 kB]
+.
+.
+.
+Setting up libpython3.9-stdlib:amd64 (3.9.2-1) ...
+Setting up libpython3-stdlib:amd64 (3.9.2-3) ...
+Setting up python3.9 (3.9.2-1) ...
+Setting up python3 (3.9.2-3) ...
+running python rtupdate hooks for python3.9...
+running python post-rtupdate hooks for python3.9...
+Setting up lsb-release (11.1.0) ...
+Processing triggers for libc-bin (2.31-13+deb11u3) ...
+--> 3335f1564bb
+STEP 4/8: RUN curl -fsSLo /usr/share/keyrings/docker-archive-keyring.asc   https://download.docker.com/linux/debian/gpg
+--> 7b94cdd9e29
+STEP 5/8: RUN echo "deb [arch=$(dpkg --print-architecture)   signed-by=/usr/share/keyrings/docker-archive-keyring.asc]   https://downlo                                                            ad.docker.com/linux/debian   $(lsb_release -cs) stable" > /etc/apt/sources.list.d/docker.list
+--> 9386359baef
+STEP 6/8: RUN apt-get update && apt-get install -y docker-ce-cli
+Hit:1 http://deb.debian.org/debian bullseye InRelease
+Hit:2 http://deb.debian.org/debian bullseye-updates InRelease
+Get:3 https://download.docker.com/linux/debian bullseye InRelease [43.3 kB]
+Hit:4 http://security.debian.org/debian-security bullseye-security InRelease
+Get:5 https://download.docker.com/linux/debian bullseye/stable amd64 Packages [9412 B]
+Fetched 52.8 kB in 1s (37.3 kB/s)
+Reading package lists...
+Reading package lists...
+Building dependency tree...
+Reading state information...
+.
+.
+.
+Unpacking docker-scan-plugin (0.17.0~debian-bullseye) ...
+Setting up docker-scan-plugin (0.17.0~debian-bullseye) ...
+Setting up docker-ce-cli (5:20.10.14~3-0~debian-bullseye) ...
+--> 2cc791ae60c
+STEP 7/8: USER jenkins
+--> be45ea9c487
+STEP 8/8: RUN jenkins-plugin-cli --plugins "blueocean:1.25.3 docker-workflow:1.28"
+Done
+COMMIT myjenkins-blueocean:2.332.2-1
+--> 1df13058e89
+Successfully tagged localhost/myjenkins-blueocean:2.332.2-1
+9c9221c302b519d2d115d0e04939c1ccf1dd35104ee90e76e2e400776c24095a
+[root@Docker1 jenkins]# docker images
+REPOSITORY                                TAG                 IMAGE ID            CREATED             SIZE
+myjenkins-blueocean                       2.332.2-1           9c9221c302b5        14 hours ago        771 MB
+<none>                                    <none>              1df13058e892        15 hours ago        769 MB
+docker.io/jenkins/jenkins                 2.332.2-jdk11       fd576e09d155        2 weeks ago         464 MB
+docker.io/docker                          dind                a072474332af        2 weeks ago         235 MB
+docker.io/redis                           latest              0e403e3816e8        7 weeks ago         113 MB
+docker.io/mysql                           5.7                 8b94b71dcc1e        7 weeks ago         448 MB
+docker.io/busybox                         latest              beae173ccac6        3 months ago        1.24 MB
+docker.io/gitlab/gitlab-ee                latest              935605e8a1c8        4 months ago        2.54 GB
+docker.io/registry                        2                   b8604a3fe854        5 months ago        26.2 MB
+docker.io/centos                          7                   eeb6ee3f44bd        7 months ago        204 MB
+docker.io/zangredrock/jeecg-boot-system   latest              0b72216377f2        18 months ago       245 MB
+docker.io/progrium/consul                 latest              09ea64205e55        6 years ago         69.4 MB
+[root@Docker1 jenkins]#
+############################# 6. 启动myjenkins-blueocean容器
+[root@Docker1 jenkins]# docker run --name jenkins-blueocean --rm --detach \
+>   --network jenkins --env DOCKER_HOST=tcp://docker:2376 \
+>   --env DOCKER_CERT_PATH=/certs/client --env DOCKER_TLS_VERIFY=1 \
+>   --publish 8080:8080 --publish 50000:50000 \
+>   --volume jenkins-data:/var/jenkins_home \
+>   --volume jenkins-docker-certs:/certs/client:ro \
+>   myjenkins-blueocean:2.332.2-1
+b830d2301af39c761c78c830513b225d83c02e8935e01e5350fb49336ca6992a
+[root@Docker1 jenkins]# docker ps
+CONTAINER ID        IMAGE                           COMMAND                  CREATED             STATUS              PORTS                                              NAMES
+b830d2301af3        myjenkins-blueocean:2.332.2-1   "/sbin/tini -- /us..."   7 seconds ago       Up 6 seconds        0.0.0.0:8080->8080/tcp, 0.0.0.0:50000->50000/tcp   jenkins-blueocean
+8b9fc22ee909        docker:dind                     "dockerd-entrypoin..."   41 hours ago        Up 41 hours         2375/tcp, 0.0.0.0:2376->2376/tcp                   jenkins-docker
+[root@Docker1 jenkins]#
+############################# 7. 查看管理员密码
+[root@Docker1 jenkins]# docker exec -it jenkins-blueocean   cat /var/jenkins_home/secrets/initialAdminPassword
+d8aed159dd164cfe88ce932a505f1491
+[root@Docker1 jenkins]# 
 ```
 
 
