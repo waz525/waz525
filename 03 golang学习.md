@@ -802,7 +802,34 @@ func main() {
 
 ```
 
+#### 1.3.7.4 方法(类)
 
+> Go 没有面向对象，而我们知道常见的 Java/C++ 等语言中，实现类的方法做法都是编译器隐式的给函数加一个 this 指针，而在 Go 里，这个 this 指针需要明确的申明出来，其实和其它 OO 语言并没有很大的区别。
+
+```go
+package main
+
+import (
+   "fmt"  
+)
+
+/* 定义结构体 */
+type Circle struct {
+  radius float64
+}
+
+//该 method 属于 Circle 类型对象中的方法
+func (c Circle) getArea() float64 {
+  //c.radius 即为 Circle 类型对象中的属性
+  return 3.14 * c.radius * c.radius
+}
+
+func main() {
+  var c1 Circle
+  c1.radius = 10.00
+  fmt.Println("圆的面积 = ", c1.getArea())
+}
+```
 
 ### 1.3.8 范围(Range)
 
@@ -1206,36 +1233,55 @@ func main(){
 }
 ```
 
-### 1.5.5 方法(类)
+### 1.5.5 装饰器设计模式
 
-> Go 没有面向对象，而我们知道常见的 Java/C++ 等语言中，实现类的方法做法都是编译器隐式的给函数加一个 this 指针，而在 Go 里，这个 this 指针需要明确的申明出来，其实和其它 OO 语言并没有很大的区别。
+> 利用高阶函数实现类Python的装饰器
 
 ```go
 package main
 
 import (
-   "fmt"  
+	"fmt"
+	"time"
 )
 
-/* 定义结构体 */
-type Circle struct {
-  radius float64
+type handler func(int, int)
+
+func wrapFunc(h handler) handler {
+	return func(a, b int) {
+		fmt.Println("Begin ...")
+		start := time.Now()
+		h(a, b)
+		fmt.Println("time elapsed:", time.Since(start))
+		fmt.Println("End !!!")
+	}
 }
 
-//该 method 属于 Circle 类型对象中的方法
-func (c Circle) getArea() float64 {
-  //c.radius 即为 Circle 类型对象中的属性
-  return 3.14 * c.radius * c.radius
+func Sum(a, b int) {
+	fmt.Printf("The result is: %v\n", a+b)
 }
 
 func main() {
-  var c1 Circle
-  c1.radius = 10.00
-  fmt.Println("圆的面积 = ", c1.getArea())
+	foo := wrapFunc(Sum)
+	foo(200, 300)
 }
+
 ```
 
-## 1.6 接口 
+```shell
+[root@Docker1 interface-go]# go run handleFunc.go
+Begin ...
+The result is: 500
+time elapsed: 4.699µs
+End !!!
+[root@Docker1 interface-go]#
+```
+
+
+
+
+
+## 1.6 接口
 
 >Go 语言提供了另外一种数据类型即接口，它把所有的具有共性的方法定义在一起，任何其他类型只要实现了这些方法就是实现了这个接口。
 
@@ -1972,6 +2018,319 @@ ok      _/home/golang/golang/Utils      0.004s
 > https://zhuanlan.zhihu.com/p/375946045
 
 
+
+## 1.23 go mod使用
+
+### 1.23.1 基础配置 
+
+>#### GO111MODULE
+>
+>通过 GO111MODULE 可以开启或关闭 go module 工具:
+>
+>
+> - GO111MODULE=off 禁用 go module，编译时会从 GOPATH 和 vendor 文件夹中查找包；
+>- GO111MODULE=on 启用 go module，编译时会忽略 GOPATH 和 vendor 文件夹，只根据 go.mod下载依赖；
+>- GO111MODULE=auto（默认值），当项目在 GOPATH/src 目录之外，并且项目根目录有 go.mod 文件时，开启 go module。
+
+```shell
+[root@localhost golang]# go env -w GO111MODULE=on
+[root@localhost golang]# go env |grep GO111MODULE
+GO111MODULE="on"
+[root@localhost golang]#
+```
+
+> #### go mod命令
+
+| 命令            | 作用                                           |
+| --------------- | ---------------------------------------------- |
+| go mod download | 下载依赖包到本地（默认为 GOPATH/pkg/mod 目录） |
+| go mod edit     | 编辑 go.mod 文件                               |
+| go mod graph    | 打印模块依赖图                                 |
+| go mod init     | 初始化当前文件夹，创建 go.mod 文件             |
+| go mod tidy     | 增加缺少的包，删除无用的包                     |
+| go mod vendor   | 将依赖复制到 vendor 目录下                     |
+| go mod verify   | 校验依赖                                       |
+| go mod why      | 解释为什么需要依赖                             |
+
+> #### GOPROXY
+>
+> 目前公开的代理服务器的地址有：
+>
+> - goproxy.io；
+> - goproxy.cn：（推荐）由国内的七牛云提供。
+
+```shell
+#Windows设置
+#go env -w GOPROXY=https://goproxy.cn,direct
+#Linux设置
+export GOPROXY=https://goproxy.cn
+```
+
+> #### go get命令
+>
+> 下载指定版本的依赖包:
+>
+> - 运行`go get -u`命令会将项目中的包升级到最新的次要版本或者修订版本；
+> - 运行`go get -u=patch`命令会将项目中的包升级到最新的修订版本；
+> - 运行`go get [包名]@[版本号]`命令会下载对应包的指定版本或者将对应包升级到指定的版本。
+>
+> 提示：`go get [包名]@[版本号]`命令中版本号可以是 x.y.z 的形式，例如 go get foo@v1.2.3，也可以是 git 上的分支或 tag，例如 go get foo@master，还可以是 git 提交时的哈希值，例如 go get foo@e3702bed2。
+
+### 1.23.2 实例一
+
+```shell
+[root@localhost gomod]# cd hello/
+[root@localhost hello]# ls
+############################ 1.使用go mod init初始化生成 go.mod 文件
+[root@localhost hello]# go mod init hello
+go: creating new go.mod: module hello
+[root@localhost hello]# ls
+go.mod
+[root@localhost hello]# cat go.mod
+module hello
+
+go 1.16
+[root@localhost hello]#
+############################ 2.编写main.go
+[root@localhost hello]# vim main.go
+[root@localhost hello]# cat main.go
+package main
+import (
+    "net/http"
+    "github.com/labstack/echo"
+)
+func main() {
+    e := echo.New()
+    e.GET("/", func(c echo.Context) error {
+        return c.String(http.StatusOK, "Hello, World!")
+    })
+    e.Logger.Fatal(e.Start(":1323"))
+}
+[root@localhost hello]#
+############################ 3.运行main.go报错，使用go get获取依赖包
+[root@localhost hello]# go run main.go
+main.go:4:5: no required module provides package github.com/labstack/echo; to add it:
+        go get github.com/labstack/echo
+[root@localhost hello]# 
+[root@localhost hello]# go get github.com/labstack/echo
+go: downloading github.com/labstack/echo v1.4.4
+go: downloading github.com/labstack/echo v3.3.10+incompatible
+go: downloading github.com/labstack/gommon v0.3.1
+go: downloading golang.org/x/crypto v0.0.0-20220411220226-7b82a4e95df4
+go: downloading github.com/mattn/go-colorable v0.1.11
+go: downloading github.com/mattn/go-isatty v0.0.14
+go: downloading github.com/valyala/fasttemplate v1.2.1
+go: downloading golang.org/x/net v0.0.0-20211112202133-69e39bad7dc2
+go: downloading github.com/valyala/bytebufferpool v1.0.0
+go: downloading golang.org/x/sys v0.0.0-20211103235746-7861aae1554b
+go: downloading golang.org/x/text v0.3.6
+go get: added github.com/labstack/echo v3.3.10+incompatible
+go get: added github.com/labstack/gommon v0.3.1
+go get: added golang.org/x/crypto v0.0.0-20220411220226-7b82a4e95df4
+[root@localhost hello]# 
+############################ 4.go get后，go.mod内容被修改，并增加了go.sum，能够正常执行
+[root@localhost hello]# ls
+go.mod  go.sum  main.go
+[root@localhost hello]# cat go.mod
+module hello
+
+go 1.16
+
+require (
+        github.com/labstack/echo v3.3.10+incompatible // indirect
+        github.com/labstack/gommon v0.3.1 // indirect
+        golang.org/x/crypto v0.0.0-20220411220226-7b82a4e95df4 // indirect
+)
+[root@localhost hello]# 
+[root@localhost hello]# go run main.go
+
+   ____    __
+  / __/___/ /  ___
+ / _// __/ _ \/ _ \
+/___/\__/_//_/\___/ v3.3.10-dev
+High performance, minimalist Go web framework
+https://echo.labstack.com
+____________________________________O/_______
+                                    O\
+⇨ http server started on [::]:1323
+
+
+```
+
+> 
+>
+
+### 1.23.3 实例二：引用自定义模块
+
++ 项目目录结构为：
+
+```
+├─ main.go
+│
+└─ api
+   └─ apis.go
+```
++ main.go 源码为：
+
+```go
+package main
+import (
+    api "./api"  // 这里使用的是相对路径
+    "github.com/labstack/echo"
+)
+func main() {
+    e := echo.New()
+    e.GET("/", api.HelloWorld)
+    e.Logger.Fatal(e.Start(":1323"))
+}
+```
+
++ api/apis.go 源码为
+
+```go
+package api
+import (
+    "net/http"
+    "github.com/labstack/echo"
+)
+func HelloWorld(c echo.Context) error {
+    return c.JSON(http.StatusOK, "hello world")
+}
+```
+
++ <font color=red>执行失败，最后有报错</font>
+
+```shell
+############################ 1.初始化go.mod
+[root@localhost hello]# go mod init hello
+go: creating new go.mod: module hello
+go: to add module requirements and sums:
+        go mod tidy
+[root@localhost hello]# ls
+api  go.mod  main.go
+[root@localhost hello]# cat go.mod
+module hello
+
+go 1.16
+[root@localhost hello]#
+[root@localhost hello]# go run main.go
+api/apis.go:6:5: no required module provides package github.com/labstack/echo; to add it:
+        go get github.com/labstack/echo
+[root@localhost hello]# 
+############################ 2.go get 更新 go.mod
+[root@localhost hello]# go get github.com/labstack/echo
+go get: added github.com/labstack/echo v3.3.10+incompatible
+go get: added github.com/labstack/gommon v0.3.1
+go get: added golang.org/x/crypto v0.0.0-20220411220226-7b82a4e95df4
+[root@localhost hello]# cat go.mod
+module hello
+
+go 1.16
+
+require (
+        github.com/labstack/echo v3.3.10+incompatible // indirect
+        github.com/labstack/gommon v0.3.1 // indirect
+        golang.org/x/crypto v0.0.0-20220411220226-7b82a4e95df4 // indirect
+)
+############################ 3.执行go run，报找不到api包
+[root@localhost hello]# go run main.go
+build command-line-arguments: cannot find module for path _/home/golang/gomod/hello/api
+```
+
+> 这是因为 main.go 中使用 internal package 的方法跟以前已经不同了，由于 go.mod 会扫描同工作目录下所有 package 并且变更引入方法，必须将 hello 当成路径的前缀，也就是需要写成 import hello/api，以往 GOPATH/dep 模式允许的 import ./api 已经失效。
+
++ 更新 package import 方式，main.go 改写成：
+
+  ```go
+  package main
+  import (
+      api "hello/api" // 这里使用的是相对路径
+      "github.com/labstack/echo"
+  )
+  func main() {
+      e := echo.New()
+      e.GET("/", api.HelloWorld)
+      e.Logger.Fatal(e.Start(":1323"))
+  }
+  ```
+
+更改后运行成功
+
+```go
+[root@localhost hello]# go run main.go
+
+   ____    __
+  / __/___/ /  ___
+ / _// __/ _ \/ _ \
+/___/\__/_//_/\___/ v3.3.10-dev
+High performance, minimalist Go web framework
+https://echo.labstack.com
+____________________________________O/_______
+                                    O\
+⇨ http server started on [::]:1323
+
+```
+
+### 1.23.4 查看依赖和升级依赖包
+
+> 可以使用命令`go list -m -u all`来检查可以升级的 package，使用`go get -u need-upgrade-package`升级后会将新的依赖版本更新到 go.mod * 也可以使用`go get -u`升级所有依赖。
+
+```shell
+############################ 查看所有依赖
+[root@localhost hello]# go list -m -u all
+hello
+github.com/davecgh/go-spew v1.1.1
+github.com/labstack/echo v3.3.10+incompatible
+github.com/labstack/gommon v0.3.1
+github.com/mattn/go-colorable v0.1.11 [v0.1.12]
+github.com/mattn/go-isatty v0.0.14
+github.com/pmezard/go-difflib v1.0.0
+github.com/stretchr/objx v0.1.0 [v0.3.0]
+github.com/stretchr/testify v1.7.0 [v1.7.1]
+github.com/valyala/bytebufferpool v1.0.0
+github.com/valyala/fasttemplate v1.2.1
+golang.org/x/crypto v0.0.0-20220411220226-7b82a4e95df4
+golang.org/x/net v0.0.0-20211112202133-69e39bad7dc2 [v0.0.0-20220425223048-2871e0cb64e4]
+golang.org/x/sys v0.0.0-20211103235746-7861aae1554b [v0.0.0-20220422013727-9388b58f7150]
+golang.org/x/term v0.0.0-20201126162022-7de9c90e9dd1 [v0.0.0-20220411215600-e5f449aeb171]
+golang.org/x/text v0.3.6 [v0.3.7]
+golang.org/x/tools v0.0.0-20180917221912-90fa682c2a6e [v0.1.10]
+gopkg.in/check.v1 v0.0.0-20161208181325-20d25e280405 [v1.0.0-20201130134442-10cb98267c6c]
+gopkg.in/yaml.v3 v3.0.0-20210107192922-496545a6307b
+[root@localhost hello]#
+############################ 升级所有的包
+[root@localhost hello]# go get -u
+go: downloading github.com/mattn/go-colorable v0.1.12
+go: downloading golang.org/x/net v0.0.0-20220425223048-2871e0cb64e4
+go: downloading golang.org/x/sys v0.0.0-20220422013727-9388b58f7150
+go: downloading golang.org/x/text v0.3.7
+go get: upgraded github.com/mattn/go-colorable v0.1.11 => v0.1.12
+go get: upgraded golang.org/x/net v0.0.0-20211112202133-69e39bad7dc2 => v0.0.0-20220425223048-2871e0cb64e4
+go get: upgraded golang.org/x/sys v0.0.0-20211103235746-7861aae1554b => v0.0.0-20220422013727-9388b58f7150
+[root@localhost hello]#
+
+```
+
+> 
+
+### 1.23.4 go.mod语句
+
+> go.mod 提供了 module、require、replace 和 exclude 四类语句：
+>
+> - module 语句指定包的名字（路径）；
+> - require 语句指定的依赖项模块；
+> - replace 语句可以替换依赖项模块；
+> - exclude 语句可以忽略依赖项模块
+
+#### 1.23.4.1 使用 replace 替换无法直接获取的 package
+
+> 由于某些已知的原因，并不是所有的 package 都能成功下载，比如：golang.org 下的包。
+>
+> modules 可以通过在 go.mod 文件中使用 replace 指令替换成 github 上对应的库，比如：
+>
+> replace (
+>   golang.org/x/crypto v0.0.0-20190313024323-a1f597ede03a => github.com/golang/crypto v0.0.0-20190313024323-a1f597ede03a
+> )
 
 
 

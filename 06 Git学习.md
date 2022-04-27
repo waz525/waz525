@@ -204,20 +204,10 @@ channel-go
 ```shell
 [root@Docker1 golang]# git config --global user.name "X4033"
 [root@Docker1 golang]# git config --global user.email "X4033@fh.com"
-[root@Docker1 channel-go]# git config --list
+[root@Docker1 golang]# git config --list
 user.name=X4033
 user.email=X4033@fh.com
-core.repositoryformatversion=0
-core.filemode=true
-core.bare=false
-core.logallrefupdates=true
-remote.origin.url=git@192.166.1.241:X4033/channel-go.git
-remote.origin.fetch=+refs/heads/*:refs/remotes/origin/*
-branch.main.remote=origin
-branch.main.merge=refs/heads/main
-branch.test1.remote=origin
-branch.test1.merge=refs/heads/test1
-[root@Docker1 channel-go]#
+[root@Docker1 golang]#
 ```
 
 ### 2.1.2 拉取远程，建立分支
@@ -239,6 +229,20 @@ Receiving objects: 100% (3/3), done.
 [root@Docker1 golang]# cd channel-go/
 [root@Docker1 channel-go]# ls
 README.md
+[root@Docker1 channel-go]# git config --list
+user.name=X4033
+user.email=X4033@fh.com
+core.repositoryformatversion=0
+core.filemode=true
+core.bare=false
+core.logallrefupdates=true
+remote.origin.url=git@192.166.1.241:X4033/channel-go.git
+remote.origin.fetch=+refs/heads/*:refs/remotes/origin/*
+branch.main.remote=origin
+branch.main.merge=refs/heads/main
+branch.test1.remote=origin
+branch.test1.merge=refs/heads/test1
+[root@Docker1 channel-go]#
 [root@Docker1 channel-go]# git branch		# 查看本地分支
 * main
 [root@Docker1 channel-go]# git branch  -a	# 查看所有分支
@@ -436,7 +440,13 @@ total 4
 [root@Docker1 interface-go]# git branch
 * master
 [root@Docker1 interface-go]#
-############################# 5. 同步到远程仓库，网页上可以看到新项目
+############################# 5. 添加远程仓库
+[root@Docker1 interface-go]# git remote add origin git@192.166.1.241:X4033/interface-go.git
+[root@Docker1 interface-go]# git remote -v
+origin  git@192.166.1.241:X4033/interface-go.git (fetch)
+origin  git@192.166.1.241:X4033/interface-go.git (push)
+[root@Docker1 interface-go]#
+############################# 6. 同步到远程仓库，网页上可以看到新项目
 [root@Docker1 interface-go]# git push -u origin master
 Counting objects: 3, done.
 Compressing objects: 100% (2/2), done.
@@ -457,6 +467,18 @@ remote:
 To git@192.166.1.241:X4033/interface-go.git
  * [new branch]      master -> master
 Branch master set up to track remote branch master from origin.
+[root@Docker1 interface-go]#
+[root@Docker1 interface-go]# git config --list
+user.name=X4033
+user.email=X4033@fh.com
+core.repositoryformatversion=0
+core.filemode=true
+core.bare=false
+core.logallrefupdates=true
+remote.origin.url=git@192.166.1.241:X4033/interface-go.git
+remote.origin.fetch=+refs/heads/*:refs/remotes/origin/*
+branch.master.remote=origin
+branch.master.merge=refs/heads/master
 [root@Docker1 interface-go]#
 ```
 
@@ -493,7 +515,12 @@ git clone https://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@github.com/ydsl01/kub
 
 ```
 
+## 3.3 界面上删除项目
 
+> 1. 进入项目中
+> 2. 左侧菜单栏Settings->General->Advanced->Expend
+> 3. 划到最下方有`Remove project`
+> 4. 输入需要删除的项目名即可
 
 # 11 Jenkins
 
@@ -689,6 +716,10 @@ b830d2301af3        myjenkins-blueocean:2.332.2-1   "/sbin/tini -- /us..."   7 s
 d8aed159dd164cfe88ce932a505f1491
 [root@Docker1 jenkins]# 
 ```
+
+> 访问URL：http://192.166.1.241:8080/
+
+## 11.2 
 
 
 
