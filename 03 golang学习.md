@@ -489,7 +489,7 @@ balance3[4] = 0.000000
 [root@5d09d6b9f9d5 golang]#
 ```
 
-#### 多维数组
+#### 1.3.5.1 多维数组
 
 + 多维数组声明 `var variable_name [SIZE1][SIZE2]...[SIZEN] variable_type`
 
@@ -565,6 +565,19 @@ Row 2
 1
 [root@5d09d6b9f9d5 golang]#
 ```
+
+#### 1.3.5.2 二维数组动态生成
+
+```go
+    goods := make([][]int, count)
+    for i := 0; i < count; i++ {
+        goods[i] = make([]int, 3)
+    }
+```
+
+
+
+
 
 ### 1.3.6 指针
 
@@ -5138,6 +5151,127 @@ Please check https://pkg.go.dev/github.com/gin-gonic/gin#readme-don-t-trust-all-
 
 
 
+# 4 常用包学习
+
+## 4.1 sort包
+
+### 4.1.1 Int升序或降序
+
+```go
+package main
+import  (
+    "fmt"
+    "sort"
+)
+
+func main() {
+    var nCount, nFlag int
+    fmt.Scan(&nCount)
+    nList := make([]int, nCount)
+    for i:=0;i<nCount;i++ {
+        fmt.Scan(&nList[i])
+    }
+    fmt.Scan(&nFlag)
+    if nFlag == 0 {
+        //升序
+        sort.Ints(nList)
+    } else {
+        //降序
+        sort.Sort(sort.Reverse(sort.IntSlice(nList)))
+    }
+    
+   
+    for i:=0;i<nCount;i++ {
+        fmt.Print(nList[i]," ")
+    }
+    fmt.Println()
+}
+```
+
+```shell
+[root@Worden-1-3 golang]# go run 28.go
+8
+1 2 4 9 3 55 64 25
+0
+1 2 3 4 9 25 55 64
+[root@Worden-1-3 golang]# go run 28.go
+5
+1 2 3 4 5
+1
+5 4 3 2 1
+[root@Worden-1-3 golang]#
+```
+
+### 4.1.2 二维数组排序
+
+```go
+    var nOutList [][]int
+
+	......
+	
+	//二维数组排序
+    sort.Slice(nOutList, func(i,j int) bool {
+        nLen := len(nOutList[i])
+        if nLen > len(nOutList[j]) {
+            nLen = len(nOutList[j])
+        }
+        for k:=0 ; k<nLen ; k++ {
+            if nOutList[i][k] != nOutList[j][k] {
+                return nOutList[i][k] < nOutList[j][k] //按顺序排序
+            } 
+        }
+        return true
+    })
+```
+
+### 4.1.3 结构体数组排序
+
+```go
+	type PScore struct {
+  	  name string
+  	  score int
+	}
+
+	var pScoreList []PScore
+
+    //使用切片排序，Slice会改变相等时的顺序，SliceStable不会改变相等时的顺序
+    sort.SliceStable(pScoreList, func(i , j int) bool {
+        if pType == 0 { //顺序
+            return  pScoreList[i].score > pScoreList[j].score 
+        } else { //逆序
+            return  pScoreList[i].score < pScoreList[j].score 
+        }
+    })
+ 
+```
+
+## 4.2 strings包
+
+### 4.2.1 去掉左侧字符
+
+```go
+package main
+
+import (
+	"fmt"
+	"strings"
+)
+
+func main() {
+	fmt.Println(strings.TrimLeft("01", "0"))
+	fmt.Println(strings.TrimLeft("10", "0"))
+	fmt.Println(strings.TrimLeft("100", "0"))
+	fmt.Println(strings.TrimLeft("00200", "0"))
+}
+```
+
+```shell
+1
+10
+100
+200
+```
+
 
 
 
@@ -5931,39 +6065,6 @@ func main() {
 ```
 
 ## 99.11 常用方法
-
-### 99.11.1 二维数组排序
-
-```go
-    var nOutList [][]int
-
-	......
-	
-	//二维数组排序
-    sort.Slice(nOutList, func(i,j int) bool {
-        nLen := len(nOutList[i])
-        if nLen > len(nOutList[j]) {
-            nLen = len(nOutList[j])
-        }
-        for k:=0 ; k<nLen ; k++ {
-            if nOutList[i][k] != nOutList[j][k] {
-                return nOutList[i][k] < nOutList[j][k] //按顺序排序
-            } 
-        }
-        return true
-    })
-```
-
-### 99.11.2 二维数组动态生成
-
-```go
-    goods := make([][]int, count)
-    for i := 0; i < count; i++ {
-        goods[i] = make([]int, 3)
-    }
-```
-
-
 
 
 

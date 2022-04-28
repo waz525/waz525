@@ -3269,5 +3269,84 @@ func main() {
 
 
 
+### 技面3 括号判断
+
+```go
+package main
+
+import (
+	"fmt"
+)
+
+func check1(s string) bool {
+	var flag []int
+	for i := 0; i < len(s); i++ {
+		if s[i] == '(' {
+			flag = append(flag, 1)
+		} else if s[i] == ')' {
+			if len(flag) == 0 {
+				return false
+			}
+			if flag[len(flag)-1] != 1 {
+				return false
+			}
+			flag_tmp := make([]int, len(flag)-1)
+			copy(flag_tmp, flag[0:len(flag)-1])
+			flag = flag_tmp[0:]
+		} else if s[i] == '[' {
+			flag = append(flag, 2)
+		} else if s[i] == ']' {
+			if len(flag) == 0 {
+				return false
+			}
+			if flag[len(flag)-1] != 2 {
+				return false
+			}
+			flag_tmp := make([]int, len(flag)-1)
+			copy(flag_tmp, flag[0:len(flag)-1])
+			flag = flag_tmp[0:]
+		} else if s[i] == '{' {
+			flag = append(flag, 3)
+		} else if s[i] == '}' {
+
+			if len(flag) == 0 {
+				return false
+			}
+			if flag[len(flag)-1] != 3 {
+				return false
+			}
+			flag_tmp := make([]int, len(flag)-1)
+			copy(flag_tmp, flag[0:len(flag)-1])
+			flag = flag_tmp[0:]
+		}
+
+	}
+	return len(flag) == 0
+
+}
+
+func main() {
+
+	fmt.Println(check1("()"))
+	fmt.Println(check1("()[]{}"))
+	fmt.Println(check1("(]"))
+	fmt.Println(check1("([)]"))
+	fmt.Println(check1("{[]}"))
+}
+
+```
+
+```shell
+true
+true
+false
+false
+true
+```
+
+
+
+
+
 ### END
 
