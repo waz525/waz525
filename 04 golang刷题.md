@@ -3222,7 +3222,7 @@ func main() {
 }
 ```
 
-### 技面1 一亿以内的素数的个数
+### OD技面1 一亿以内的素数的个数
 
 ```go
 package main
@@ -3265,11 +3265,127 @@ func main() {
 
 ```
 
+#### 优化：
+
+```go
+package main
+
+import (
+	"fmt"
+)
+
+func SCount(n int) int {
+	//记录n个数的状态，0为素数，1为非素数
+	numList := make([]int, n+1)
+	rst := 0
+	numList[0] = 1
+	numList[1] = 1
+	for i := 2; i <= n; i++ {
+		//如果状态为0，则为素数
+		if numList[i] == 0 {
+			rst++
+		}
+		//以i与小于i的数相乘，来定义大于i的非素数
+		for j := 2; j <= i && i*j <= n; j++ {
+			numList[i*j] = 1
+		}
+	}
+	return rst
+}
+
+func main() {
+	n := 100000000
+	fmt.Println(n, "--->", SCount(n))
+}
+
+```
+
+```go
+package main
+
+import (
+	"fmt"
+)
+
+func SCount(n int) int {
+	//记录n个数的状态，0为素数，1为非素数
+	numList := make([]int, n+1)
+	rst := 0
+	numList[0] = 1
+	numList[1] = 1
+	for i := 2; i <= n/2+1; i++ {
+		//以i与小于i的数相乘，来定义大于i的非素数
+		for j := 2; j <= i && i*j <= n; j++ {
+			numList[i*j] = 1
+		}
+	}
+
+	for i := 1; i <= n; i++ {
+		//如果状态为0，则为素数
+		if numList[i] == 0 {
+			rst++
+		}
+	}
+	return rst
+}
+
+func main() {
+	n := 100000000
+	fmt.Println(n, "--->", SCount(n))
+}
+
+```
 
 
 
+### OD技面2 猴子爬楼梯
 
-### 技面3 括号判断
+```go
+package main
+
+import (
+	"fmt"
+)
+
+var count int
+
+func ss(n int) bool {
+	if n == 50 {
+		count++
+		return true
+	} else if n > 50 {
+		return false
+	}
+
+	ss(n + 1)
+	ss(n + 2)
+
+	return false
+}
+
+func main() {
+	//递归方法
+	ss(0)
+	fmt.Println(count)
+	//优化方法，归纳
+	n := 50
+	f1 := 1
+	f2 := 2
+	f3 := 0
+	for i := 3; i <= n; i++ {
+		f3 = f1 + f2
+		f1 = f2
+		f2 = f3
+	}
+	fmt.Println(f3)
+
+}
+
+```
+
+
+
+### OD技面3 括号判断
 
 ```go
 package main
@@ -3345,6 +3461,214 @@ true
 ```
 
 
+
+### 海飞科 技面3 -1 
+
+在一个数组中，有一些字符串，有的是重复的，如：
+[“hello","this","thank",”you","hello","hello","this"]
+  编写一个函数，返回出现频率高最的字符，如上述列表返回"hello"。
+
+```go
+package main
+
+import (
+	"fmt"
+	"strings"
+)
+
+func main() {
+	nStrList := []string{"hello", "this", "thank", "you", "hello", "hello", "this", "this", "this"}
+	var maxCount int
+	var rst string
+	for i := 0; i < len(nStrList); i++ {
+		//fmt.Println(nStrList[i])
+		t := 0
+		for j := i + 1; j < len(nStrList); j++ {
+			if strings.Compare(nStrList[i], nStrList[j]) == 0 {
+				t++
+			}
+		}
+		if t > maxCount {
+			maxCount = t
+			rst = nStrList[i]
+		}
+	}
+	fmt.Println(rst)
+
+}
+```
+
+### 海飞科 技面3 -2
+
+编写一个方法，压缩字符串,将连续重复的字符用数字加字符来表示，减少占用空间；如果压缩后长度不变，就不压缩：如 :
+  1) 输入：aaaaaabbcccdaaa 返回：6a2b3c1d3a
+  2) 输入"" 返回""
+  3）  输入"xxxx" 返回4x 
+设计测试用例验证它。
+
+#### golang
+
+```go
+package main
+
+import (
+	"fmt"
+	"strconv"
+)
+
+func ZipString(str string) string {
+	strLen := len(str)
+	nStr := ""
+	ch := ""
+	n := 0
+	for i := 0; i < strLen; i++ {
+		if ch == string(str[i]) {
+			n++
+		} else {
+			if n > 0 {
+				nStr = nStr + strconv.Itoa(n) + ch
+			} else {
+				nStr = nStr + ch
+			}
+			ch = ""
+			n = 0
+		}
+		if ch == "" {
+			ch = string(str[i])
+			n++
+		}
+	}
+	if n > 0 {
+		nStr = nStr + strconv.Itoa(n) + ch
+	} else {
+		nStr = nStr + ch
+	}
+	newStrLen := len(nStr)
+	if strLen > newStrLen {
+		return nStr
+	} else {
+		return str
+	}
+}
+
+func main() {
+	var nStr string
+	nStr = "aaaaaabbcccdaaa"
+	fmt.Println(nStr, "--->", ZipString(nStr))
+	nStr = ""
+	fmt.Println(nStr, "--->", ZipString(nStr))
+	nStr = "xxxx"
+	fmt.Println(nStr, "--->", ZipString(nStr))
+	nStr = "xxbbxx"
+	fmt.Println(nStr, "--->", ZipString(nStr))
+}
+```
+
+#### python
+
+```python
+
+def ZipString(nStr) :
+    strLen = len(nStr)
+    newStr = ""
+    ch = ""
+    n = 0 
+    for c in nStr :
+        if ch == c :
+            n = n + 1 
+        else :
+            if n > 0 :
+                newStr = newStr + str(n) + ch 
+            else :
+                newStr = newStr + ch 
+            ch = ""
+            n = 0 
+        if ch == "" :
+            ch = c 
+            n = n + 1
+    if n > 0 :
+        newStr = newStr + str(n) + ch
+    else :
+        newStr = newStr + ch  
+    newStrLen=len(newStr)
+    if strLen > newStrLen :
+        return newStr
+    else :
+        return nStr
+
+mStr = "aaaaaabbcccdaaa"
+print mStr , "--->",ZipString(mStr) 
+mStr = ""
+print mStr , "--->",ZipString(mStr) 
+mStr = "xxxx"
+print mStr , "--->",ZipString(mStr) 
+mStr = "xxbbxx"
+print mStr , "--->",ZipString(mStr) 
+```
+
+### 海飞科 技面3 -3
+
+给定一上字符串，请你找出其中不含有重复字符的 最长子串 的长度。
+示例1：
+输入：s="abcabcbb"
+输出：3
+示例2：
+输入：s="bbbbb"
+输出：1
+示例1：
+输入：s="pwwkew"
+输出：3
+示例1：
+输入：s=""
+输出：0
+
+```go
+package main
+
+import (
+	"fmt"
+	"strings"
+)
+
+func NoCompStrLen(str string) int {
+	rst := 0
+	for i := 0; i < len(str)-1; i++ {
+		max := 1
+		for j := i + 1; j < len(str); j++ {
+			nStr := str[i:j]
+			if !strings.Contains(nStr, string(str[j])) {
+				max = j - i + 1
+			} else {
+				break
+			}
+		}
+		if max > rst {
+			rst = max
+		}
+	}
+	return rst
+}
+
+func main() {
+	var nStr string
+	nStr = "abcabcbb"
+	fmt.Println(nStr, "--->", NoCompStrLen(nStr))
+	nStr = "bbbbb"
+	fmt.Println(nStr, "--->", NoCompStrLen(nStr))
+	nStr = "pwwkew"
+	fmt.Println(nStr, "--->", NoCompStrLen(nStr))
+	nStr = ""
+	fmt.Println(nStr, "--->", NoCompStrLen(nStr))
+	nStr = "adfdsaeae"
+	fmt.Println(nStr, "--->", NoCompStrLen(nStr))
+	nStr = "abcabcdaccdfgh"
+	fmt.Println(nStr, "--->", NoCompStrLen(nStr))
+	nStr = "abcbcefbc"
+	fmt.Println(nStr, "--->", NoCompStrLen(nStr))
+
+}
+
+```
 
 
 
