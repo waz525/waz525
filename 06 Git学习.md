@@ -95,11 +95,11 @@ docker restart gitlab
 
 ## 1.3 创建用户
 
-界面操作（略）
+用root用户访问如下URL，界面操作（略）
 
 http://192.166.1.241/admin/users
 
-## 1.4 生成ssh-rsa
+## 1.4 生成ssh-rsa，配置用户公钥
 
 + 在本地机器（客户端）上，执行ssh-keygen，生成  ~/.ssh/id_rsa.pub  和 ~/.ssh/id_rsa
 + 将 ~/.ssh/id_rsa.pub的内容拷贝到 用户 --> Perferences  --> SSH Keys
@@ -280,7 +280,7 @@ Everything up-to-date
 ### 2.1.3 合并到远程
 
 ```shell
-[root@Docker1 channel-go]# git add .
+[root@Docker1 channel-go]# git add --all .
 [root@Docker1 channel-go]# git commit -m "01.go"
 [test1 47a7507] 01.go
  1 file changed, 14 insertions(+)
@@ -522,9 +522,9 @@ git clone https://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@github.com/ydsl01/kub
 > 3. 划到最下方有`Remove project`
 > 4. 输入需要删除的项目名即可
 
-# 11 Jenkins
+# 4 Jenkins
 
-## 11.1 Docker安装Jenkins
+## 4.1 Docker安装Jenkins
 
 > https://www.jenkins.io/doc/book/installing/docker/
 
@@ -718,8 +718,68 @@ d8aed159dd164cfe88ce932a505f1491
 ```
 
 > 访问URL：http://192.166.1.241:8080/
+>
+> X4033/ad****
 
-## 11.2 
+## 4.2 自动拉取gitlab代码打包镜像发布
+
+学习资料：
+
+<https://blog.csdn.net/qq_17686345/article/details/119394590>
+
+https://blog.csdn.net/weixin_43618209/article/details/119727236
+
+### 4.2.1 配置jenkins的gitlab权限
+
++ 在gitlab创建一个应用，填写应用名称和重定向地址，地址的规则是：jenkinsde地址/securityRealm/finishLogin；再勾选api这个选项，提交，然后就会创建出一个应用
+
+![image-20220508002702272](06 Git学习.assets/image-20220508002702272.png)
+
+![image-20220507172707405](06 Git学习.assets/image-20220507172707405.png)
+
++ 进入jenkins，系统管理=>插件管理，安装 Gitlab Authentication 插件重启之后，进入：系统管理 => 全局安全配置 
+
+  
+
+![image-20220507173746705](06 Git学习.assets/image-20220507173746705.png)
+
+![image-20220507173935289](06 Git学习.assets/image-20220507173935289.png)
+
+​		配置完后点击底部的保存按钮保存配置信息；｛配置完了，jankins就能单点登录了｝
+
+### 4.2.2 配置jenkins的私钥与gitlab的部署密钥
+
++ gitlab的部署公钥（此处略，请查看 1.4）
+
++ jankins配置全局凭据：系统管理 => Manage Credentials =>“全局” =>添加一些凭据
+
+![image-20220508004302049](06 Git学习.assets/image-20220508004302049.png)
+
+![image-20220508004409804](06 Git学习.assets/image-20220508004409804.png)
+
+添加完成后，可以查看相关信息，（点击ID可选删除），（另外此处配置的密钥，也可以使用用户名密码方式）
+
+![image-20220508004447105](06 Git学习.assets/image-20220508004447105.png)
+
+### 4.2.3 配置jenkins的构建项目
+
+#### 4.2.3.1 jenkins的源码管理
+
++ 新建任务==>源码管理
+
+![image-20220508005744334](06 Git学习.assets/image-20220508005744334.png)
+
+
+
+![image-20220508010210357](06 Git学习.assets/image-20220508010210357.png)
+
+分支默认为``*/master``，保存后效果：
+
+![image-20220508010335584](06 Git学习.assets/image-20220508010335584.png)
+
+#### 4.2.3.2 安装 Build With Parameters 插件
+
+
 
 
 
