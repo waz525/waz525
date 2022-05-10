@@ -721,6 +721,35 @@ d8aed159dd164cfe88ce932a505f1491
 >
 > X4033/ad****
 
+```shell
+## 重启机器后，重启dind和jenkins ##
+####################################################
+##启动dind
+
+docker run --name jenkins-docker --rm --detach \
+  --privileged --network jenkins --network-alias docker \
+  --env DOCKER_TLS_CERTDIR=/certs \
+  --volume jenkins-docker-certs:/certs/client \
+  --volume jenkins-data:/var/jenkins_home \
+  --publish 2376:2376 \
+  docker:dind --storage-driver overlay2
+
+####################################################
+##启动jenkins
+
+docker run --name jenkins-blueocean --rm --detach \
+   --network jenkins --env DOCKER_HOST=tcp://docker:2376 \
+   --env DOCKER_CERT_PATH=/certs/client --env DOCKER_TLS_VERIFY=1 \
+   --publish 8080:8080 --publish 50000:50000 \
+   --volume jenkins-data:/var/jenkins_home \
+   --volume jenkins-docker-certs:/certs/client:ro \
+   myjenkins-blueocean:2.332.2-1
+```
+
+
+
+
+
 ## 4.2 自动拉取gitlab代码打包镜像发布
 
 学习资料：
@@ -783,7 +812,7 @@ https://blog.csdn.net/weixin_43618209/article/details/119727236
 
 #### 4.2.3.3 设置构建shell
 
-在interface-go工程中，配置=>构建=>增加构建步骤=>执行shell
+在interface-go工程中，配置=>构建=>增加构建步骤=>执行shell，填入如下内容：
 
 ```shell
 Githash=`git rev-parse --short HEAD` 
@@ -797,7 +826,27 @@ echo "--------------Launching Container---------------"
 docker run --name demo -d -p 12802:12802 demohttp:latest
 ```
 
+软件工程中包含一个Dockerfile，如下：
+
+```dockerfile
+# build step
+FROM worden525/centos7-golang 
+COPY simpleHttpServer.go /
+RUN cd / && go build --tags netgo simpleHttpServer.go
+CMD [ "/simpleHttpServer" ]
+
+# create real app image
+
+FROM alpine
+COPY --from=0  /simpleHttpServer /
+CMD [ "/simpleHttpServer" ]
+```
+
+
+
 #### 4.2.3.4 手动构建
+
+**控制台输出**如下：
 
 ```shell
 Started by user X4033
@@ -814,55 +863,47 @@ Fetching upstream changes from git@192.166.1.241:X4033/interface-go.git
 using GIT_SSH to set credentials 
  > git fetch --tags --force --progress -- git@192.166.1.241:X4033/interface-go.git +refs/heads/*:refs/remotes/origin/* # timeout=10
  > git rev-parse refs/remotes/origin/master^{commit} # timeout=10
-Checking out Revision b1b4b492800b8e1767c7bd071c6cc5985d12a1b3 (refs/remotes/origin/master)
+Checking out Revision 673e9c84bf1740bf164692addc57f61115bffafc (refs/remotes/origin/master)
  > git config core.sparsecheckout # timeout=10
- > git checkout -f b1b4b492800b8e1767c7bd071c6cc5985d12a1b3 # timeout=10
-Commit message: "add dockerfile"
- > git rev-list --no-walk b1b4b492800b8e1767c7bd071c6cc5985d12a1b3 # timeout=10
-[interface-go] $ /bin/sh -xe /tmp/jenkins15669945111369453548.sh
+ > git checkout -f 673e9c84bf1740bf164692addc57f61115bffafc # timeout=10
+Commit message: "Dockerfile alpine"
+ > git rev-list --no-walk eccb33fedcf345eea80e22c59b06cd901a7b84fa # timeout=10
+[interface-go] $ /bin/sh -xe /tmp/jenkins11704309756371992938.sh
 + git rev-parse --short HEAD
-+ Githash=b1b4b49
++ Githash=673e9c8
 + echo --------------Building Docker Image-------------
 --------------Building Docker Image-------------
-+ echo b1b4b49
-b1b4b49
-+ docker build -t demohttp:b1b4b49 .
-Sending build context to Docker daemon  82.94kB
++ echo 673e9c8
+673e9c8
++ docker build -t demohttp:673e9c8 .
+Sending build context to Docker daemon  92.67kB
 
-Step 1/4 : FROM worden525/centos7-golang
-latest: Pulling from worden525/centos7-golang
-2d473b07cdd5: Pulling fs layer
-443a2359f65c: Pulling fs layer
-5d3a8ca03cfd: Pulling fs layer
-443a2359f65c: Verifying Checksum
-443a2359f65c: Download complete
-2d473b07cdd5: Verifying Checksum
-2d473b07cdd5: Download complete
-2d473b07cdd5: Pull complete
-443a2359f65c: Pull complete
-5d3a8ca03cfd: Verifying Checksum
-5d3a8ca03cfd: Download complete
-5d3a8ca03cfd: Pull complete
-Digest: sha256:fbf484b7b1e697edb5de635a9c01ebcbbf2eabfd785e50cbc0b728108bcefd4d
-Status: Downloaded newer image for worden525/centos7-golang:latest
+Step 1/7 : FROM worden525/centos7-golang
  ---> 672804159bb1
-Step 2/4 : COPY simpleHttpServer.go /
- ---> f488c7272b0a
-Step 3/4 : RUN go build simpleHttpServer.go
- ---> Running in 2da4a1cdc24f
-Removing intermediate container 2da4a1cdc24f
- ---> b9c5bb0e847c
-Step 4/4 : CMD ['/simpleHttpServer']
- ---> Running in fe765f774346
-Removing intermediate container fe765f774346
- ---> 5ebe3b9d74d6
-Successfully built 5ebe3b9d74d6
-Successfully tagged demohttp:b1b4b49
-+ docker tag demohttp:b1b4b49 demohttp:latest
+Step 2/7 : COPY simpleHttpServer.go /
+ ---> Using cache
+ ---> 4656bd2d1616
+Step 3/7 : RUN cd / && go build --tags netgo simpleHttpServer.go
+ ---> Using cache
+ ---> 87bb7619b0b0
+Step 4/7 : CMD [ "/simpleHttpServer" ]
+ ---> Using cache
+ ---> b3ec702787fe
+Step 5/7 : FROM alpine
+ ---> 0ac33e5f5afa
+Step 6/7 : COPY --from=0  /simpleHttpServer /
+ ---> 07c70e0f1d4b
+Step 7/7 : CMD [ "/simpleHttpServer" ]
+ ---> Running in cbd916b04b97
+Removing intermediate container cbd916b04b97
+ ---> 31b76c31afbb
+Successfully built 31b76c31afbb
+Successfully tagged demohttp:673e9c8
++ docker tag demohttp:673e9c8 demohttp:latest
 + echo --------------Launching Container---------------
 --------------Launching Container---------------
 + docker run --name demo -d -p 12802:12802 demohttp:latest
-cdbd345817be8b67e73bcaccd0ac84466253fbc15fbac848ef62982bbbfc4ee0
+67bd1d6cd5f9677c060588bac693e4263357d43b4bb4c150e28cb474b8b64c18
 Finished: SUCCESS
 ```
 
