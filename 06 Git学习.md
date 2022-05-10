@@ -779,6 +779,95 @@ https://blog.csdn.net/weixin_43618209/article/details/119727236
 
 #### 4.2.3.2 安装 Build With Parameters 插件
 
+已安装，但没效果
+
+#### 4.2.3.3 设置构建shell
+
+在interface-go工程中，配置=>构建=>增加构建步骤=>执行shell
+
+```shell
+Githash=`git rev-parse --short HEAD` 
+#docker stop demohttp 
+#docker rm demohttp 
+echo "--------------Building Docker Image-------------" 
+echo $Githash 
+docker build -t demohttp:$Githash . 
+docker tag demohttp:$Githash demohttp:latest 
+echo "--------------Launching Container---------------"
+docker run --name demo -d -p 12802:12802 demohttp:latest
+```
+
+#### 4.2.3.4 手动构建
+
+```shell
+Started by user X4033
+Running as SYSTEM
+Building in workspace /var/jenkins_home/workspace/interface-go
+The recommended git tool is: NONE
+using credential 2374d77e-8742-4939-9d88-50280cbf829d
+ > git rev-parse --resolve-git-dir /var/jenkins_home/workspace/interface-go/.git # timeout=10
+Fetching changes from the remote Git repository
+ > git config remote.origin.url git@192.166.1.241:X4033/interface-go.git # timeout=10
+Fetching upstream changes from git@192.166.1.241:X4033/interface-go.git
+ > git --version # timeout=10
+ > git --version # 'git version 2.30.2'
+using GIT_SSH to set credentials 
+ > git fetch --tags --force --progress -- git@192.166.1.241:X4033/interface-go.git +refs/heads/*:refs/remotes/origin/* # timeout=10
+ > git rev-parse refs/remotes/origin/master^{commit} # timeout=10
+Checking out Revision b1b4b492800b8e1767c7bd071c6cc5985d12a1b3 (refs/remotes/origin/master)
+ > git config core.sparsecheckout # timeout=10
+ > git checkout -f b1b4b492800b8e1767c7bd071c6cc5985d12a1b3 # timeout=10
+Commit message: "add dockerfile"
+ > git rev-list --no-walk b1b4b492800b8e1767c7bd071c6cc5985d12a1b3 # timeout=10
+[interface-go] $ /bin/sh -xe /tmp/jenkins15669945111369453548.sh
++ git rev-parse --short HEAD
++ Githash=b1b4b49
++ echo --------------Building Docker Image-------------
+--------------Building Docker Image-------------
++ echo b1b4b49
+b1b4b49
++ docker build -t demohttp:b1b4b49 .
+Sending build context to Docker daemon  82.94kB
+
+Step 1/4 : FROM worden525/centos7-golang
+latest: Pulling from worden525/centos7-golang
+2d473b07cdd5: Pulling fs layer
+443a2359f65c: Pulling fs layer
+5d3a8ca03cfd: Pulling fs layer
+443a2359f65c: Verifying Checksum
+443a2359f65c: Download complete
+2d473b07cdd5: Verifying Checksum
+2d473b07cdd5: Download complete
+2d473b07cdd5: Pull complete
+443a2359f65c: Pull complete
+5d3a8ca03cfd: Verifying Checksum
+5d3a8ca03cfd: Download complete
+5d3a8ca03cfd: Pull complete
+Digest: sha256:fbf484b7b1e697edb5de635a9c01ebcbbf2eabfd785e50cbc0b728108bcefd4d
+Status: Downloaded newer image for worden525/centos7-golang:latest
+ ---> 672804159bb1
+Step 2/4 : COPY simpleHttpServer.go /
+ ---> f488c7272b0a
+Step 3/4 : RUN go build simpleHttpServer.go
+ ---> Running in 2da4a1cdc24f
+Removing intermediate container 2da4a1cdc24f
+ ---> b9c5bb0e847c
+Step 4/4 : CMD ['/simpleHttpServer']
+ ---> Running in fe765f774346
+Removing intermediate container fe765f774346
+ ---> 5ebe3b9d74d6
+Successfully built 5ebe3b9d74d6
+Successfully tagged demohttp:b1b4b49
++ docker tag demohttp:b1b4b49 demohttp:latest
++ echo --------------Launching Container---------------
+--------------Launching Container---------------
++ docker run --name demo -d -p 12802:12802 demohttp:latest
+cdbd345817be8b67e73bcaccd0ac84466253fbc15fbac848ef62982bbbfc4ee0
+Finished: SUCCESS
+```
+
+
+
 
 
 
