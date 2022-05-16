@@ -66,8 +66,6 @@ Password: 2eIIr+azQwg/7spjNCkFW4g1Tpkk4xenqMcNBkvVgYg=
 
    <http://192.166.1.241/>
 
-  <https://192.166.1.241:8443>
-
  ## 1.2 配置git（可不做）
 
 + 进入docker 或直接配置
@@ -82,7 +80,7 @@ docker exec -it gitlab /bin/bash
 
 ```shell
 # For HTTP
-external_url 'http://10.1.2.93:8880'     ### 此处端口影响gitlab的侦听端口，建议使用侦听端口作映射
+external_url 'http://192.166.1.241/'     ### 此处端口影响gitlab的侦听端口，建议使用侦听端口作映射
 # For ssh
 gitlab_rails['gitlab_shell_ssh_port'] = 8822                                     
 ```
@@ -491,9 +489,9 @@ branch.master.merge=refs/heads/master
 
 
 
-# 3 Git其它示例
+## 2.3 Git其它示例
 
-## 3.1  删除掉本地不存在的远程分支
+### 2.3.1  删除掉本地不存在的远程分支
 
 多人合作开发时，如果远程的分支被其他开发删除掉，在本地执行 `git branch --all` 依然会显示该远程分支，可使用下列的命令进行删除：
 
@@ -506,7 +504,7 @@ $ git fetch -p
 $ git fetch --prune origin
 ```
 
-## 3.2 带token摘取git内容
+### 2.3.2 带token摘取git内容
 
 ```shell
 
@@ -515,14 +513,156 @@ git clone https://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@github.com/ydsl01/kub
 
 ```
 
-## 3.3 界面上删除项目
+### 2.3.3 界面上删除项目
 
 > 1. 进入项目中
 > 2. 左侧菜单栏Settings->General->Advanced->Expend
 > 3. 划到最下方有`Remove project`
 > 4. 输入需要删除的项目名即可
 
-# 4 Jenkins
+# 3 gitrunner CI/CD
+
+https://blog.csdn.net/downanddusk/article/details/124130814
+
+https://zhuanlan.zhihu.com/p/441581000
+
+https://cloud.tencent.com/developer/article/1908063?from=article.detail.1429143
+
+https://cloud.tencent.com/developer/article/1429143
+
+## 3.1 使用Shell命令打包
+
+### 3.1.1增加 gitlab-runner-shell
+
+```shell
+docker run -d --name gitlab-runner --restart always \
+  -v /var/run/docker.sock:/var/run/docker.sock \
+  -v /srv/gitlab-runner/config:/etc/gitlab-runner \
+  gitlab/gitlab-runner
+  
+docker run -d --name gitlab-runner-shell --restart always \
+  -v /var/run/docker.sock:/var/run/docker.sock \
+  -v /srv/gitlab-runnerr-shell/config:/etc/gitlab-runner \
+  gitlab/gitlab-runner
+########################################################################
+
+[root@Docker1 gitlab-runner]# docker run -d --name gitlab-runner-shell --restart always \
+>   -v /var/run/docker.sock:/var/run/docker.sock \
+>   -v /srv/gitlab-runnerr-shell/config:/etc/gitlab-runner \
+>   gitlab/gitlab-runner
+3829a6906001ff72749600ef8b4b5f64035342b484da9b3b095d35fe57c54d75
+[root@Docker1 gitlab-runner]# docker ps
+CONTAINER ID        IMAGE                           COMMAND                  CREATED             STATUS                PORTS                                                          NAMES
+3829a6906001        gitlab/gitlab-runner            "/usr/bin/dumb-ini..."   6 seconds ago       Up 4 seconds                                                                         gitlab-runner
+e84b12290f7b        myjenkins-blueocean:2.332.2-1   "/sbin/tini -- /us..."   2 days ago          Up 2 days             0.0.0.0:8080->8080/tcp, 0.0.0.0:50000->50000/tcp               jenkins-blueocean
+58d40eaaae8c        docker:dind                     "dockerd-entrypoin..."   2 days ago          Up 2 days             2375/tcp, 0.0.0.0:2376->2376/tcp                               jenkins-docker
+2c859ce66a53        gitlab/gitlab-ee:latest         "/assets/wrapper"        2 weeks ago         Up 2 days (healthy)   0.0.0.0:22->22/tcp, 0.0.0.0:80->80/tcp, 0.0.0.0:443->443/tcp   gitlab
+[root@Docker1 gitlab-runner]#
+
+```
+
+```shell
+ docker exec -it gitlab-runnerr gitlab-runner register
+ 
+########################################################################
+
+[root@Docker1 gitlab-runner]#  docker exec -it gitlab-runner-shell gitlab-runner register
+Runtime platform                                    arch=amd64 os=linux pid=13 revision=f761588f version=14.10.1
+Running in system-mode.
+
+Enter the GitLab instance URL (for example, https://gitlab.com/):
+http://192.166.1.241/                #gitlab的url
+Enter the registration token:
+EDusszQ9uyihjoy86Lkj                 #令牌，在下面的页面里查看
+Enter a description for the runner:
+[3829a6906001]:
+Enter tags for the runner (comma-separated):
+mRunner                              #标签，随便定
+Enter optional maintenance note for the runner:
+
+Registering runner... succeeded                     runner=EDusszQ9
+######################
+# git-runner的类型，根据实际需要选择；查看https://docs.gitlab.com/runner/executors/index.html
+Enter an executor: parallels, docker-ssh, shell, ssh, virtualbox, docker+machine, docker-ssh+machine, custom, docker, kubernetes:
+shell  
+Runner registered successfully. Feel free to start it, but if it's running already the config should be automatically reloaded!
+[root@Docker1 gitlab-runner]# 
+######################如果状态为未连接，则需要verify；如果还解决不了就gitlab-runner start
+[root@Docker1 gitlab-runner]# docker exec -it gitlab-runner-shell /bin/sh -c "gitlab-runner verify"
+Runtime platform                                    arch=amd64 os=linux pid=28 revision=f761588f version=14.10.1
+Running in system-mode.
+
+Verifying runner... is alive                        runner=5byH15fx
+[root@Docker1 gitlab-runner]#
+#############################
+```
+
+需要的token、runner状态等信息，请查看 ：<http://192.166.1.241/X4033/interface-go/-/settings/ci_cd#js-runners-settings
+
+![image-20220512235450225](06 Git学习.assets/image-20220512235450225.png)
+
+
+
+### 3.1.2 编辑.gitlab-ci.yml文件内容
+
+```yaml
+# 创建一个名为pages的任务
+pages:
+  # 要执行的脚本
+  script:
+    # 执行脚本
+    - echo "Compiling the code..."
+    - pwd
+    - ls
+    - echo "Compile complete."
+  # 告诉 Runner 这个名为pages的任务，只在master分支上执行
+  only:
+    - master
+  # GitLab CI有三个默认阶段：构建(build)、测试(test)、部署(deploy)。
+  # 告诉 Runner 这个名为pages的任务，只在测试阶段执行
+  stage: deploy
+  # 告诉 Runner 我们应用哪个标签，与Runner标签一致
+  tags:
+    - gitlab-runner-shell
+
+
+```
+
+### 3.1.3 执行流水线（自动触发）
+
+![image-20220515170812823](06 Git学习.assets/image-20220515170812823.png)
+
+本实验只有一项pages任务：
+
+```shell
+Running with gitlab-runner 14.10.1 (f761588f)
+  on gitlab-runner-shell HomiEkTh
+Preparing the "shell" executor
+Using Shell executor...
+Preparing environment
+Running on 87d44f6a806e...
+Getting source from Git repository
+Executing "step_script" stage of the job script
+$ echo "Compiling the code..."
+Compiling the code...
+$ pwd
+/home/gitlab-runner/builds/HomiEkTh/0/X4033/interface-go
+$ ls
+Dockerfile
+README.md
+simpleHttpServer.go
+$ echo "Compile complete."
+Compile complete.
+Job succeeded
+```
+
+
+
+
+
+
+
+# 4 Jenkins+Git
 
 ## 4.1 Docker安装Jenkins
 
@@ -758,6 +898,8 @@ docker run --name jenkins-blueocean --rm --detach \
 
 https://blog.csdn.net/weixin_43618209/article/details/119727236
 
+http://t.zoukankan.com/ifme-p-12901473.html
+
 ### 4.2.1 配置jenkins的gitlab权限
 
 + 在gitlab创建一个应用，填写应用名称和重定向地址，地址的规则是：jenkinsde地址/securityRealm/finishLogin；再勾选api这个选项，提交，然后就会创建出一个应用
@@ -806,11 +948,9 @@ https://blog.csdn.net/weixin_43618209/article/details/119727236
 
 ![image-20220508010335584](06 Git学习.assets/image-20220508010335584.png)
 
-#### 4.2.3.2 安装 Build With Parameters 插件
 
-已安装，但没效果
 
-#### 4.2.3.3 设置构建shell
+#### 4.2.3.2 设置构建shell
 
 在interface-go工程中，配置=>构建=>增加构建步骤=>执行shell，填入如下内容：
 
@@ -826,7 +966,7 @@ echo "--------------Launching Container---------------"
 docker run --name demo -d -p 12802:12802 demohttp:latest
 ```
 
-软件工程中包含一个Dockerfile，如下：
+注意：软件工程中包含一个Dockerfile，如下：
 
 ```dockerfile
 # build step
@@ -844,9 +984,9 @@ CMD [ "/simpleHttpServer" ]
 
 
 
-#### 4.2.3.4 手动构建
+#### 4.2.3.3 手动构建
 
-**控制台输出**如下：
+工程下，左侧执行"**构建**"，在**控制台输出**页输出如下：
 
 ```shell
 Started by user X4033
@@ -909,7 +1049,113 @@ Finished: SUCCESS
 
 
 
+### 4.2.4 参数化构建
 
+#### 4.2.4.1 安装 Build With Parameters 插件
+
+系统管理=>插件管理，搜索并安装**Build With Parameters**
+
+#### 4.2.4.2 配置参数
+
+在**配置**工程时，选择“**参数化构建过程**”，增加image_name、tag、container_name、port参数。
+
+![image-20220510210851801](06 Git学习.assets/image-20220510210851801.png)
+
+**执行shell**里配置如下：
+
+```shell
+Githash=`git rev-parse --short HEAD` 
+docker stop ${container_name}
+docker rm ${container_name}
+echo "--------------Building Docker Image-------------" 
+echo $Githash 
+docker build -t ${image_name}:$Githash . 
+docker tag demohttp:$Githash ${image_name}:${tag} 
+echo "--------------Launching Container---------------"
+docker run --name  ${container_name} -d -p ${port}:${port} ${image_name}:${tag}
+docker save ${image_name}:${tag} > ${image_name}_${tag}_`date +%Y%m%d%H%M%S`.tar
+```
+
+**保存**后，左侧**构建**菜单变为**Build With Parameters**
+
+#### 4.2.4.3 手动构建
+
+![image-20220510213012232](06 Git学习.assets/image-20220510213012232.png)
+
+**控制台日志**：
+
+```shell
+Started by user X4033
+Running as SYSTEM
+Building in workspace /var/jenkins_home/workspace/interface-go
+The recommended git tool is: NONE
+using credential 2374d77e-8742-4939-9d88-50280cbf829d
+ > git rev-parse --resolve-git-dir /var/jenkins_home/workspace/interface-go/.git # timeout=10
+Fetching changes from the remote Git repository
+ > git config remote.origin.url git@192.166.1.241:X4033/interface-go.git # timeout=10
+Fetching upstream changes from git@192.166.1.241:X4033/interface-go.git
+ > git --version # timeout=10
+ > git --version # 'git version 2.30.2'
+using GIT_SSH to set credentials 
+ > git fetch --tags --force --progress -- git@192.166.1.241:X4033/interface-go.git +refs/heads/*:refs/remotes/origin/* # timeout=10
+ > git rev-parse refs/remotes/origin/master^{commit} # timeout=10
+Checking out Revision 673e9c84bf1740bf164692addc57f61115bffafc (refs/remotes/origin/master)
+ > git config core.sparsecheckout # timeout=10
+ > git checkout -f 673e9c84bf1740bf164692addc57f61115bffafc # timeout=10
+Commit message: "Dockerfile alpine"
+ > git rev-list --no-walk 673e9c84bf1740bf164692addc57f61115bffafc # timeout=10
+[interface-go] $ /bin/sh -xe /tmp/jenkins10008831914781652038.sh
++ git rev-parse --short HEAD
++ Githash=673e9c8
++ docker stop httpdemo
+httpdemo
++ docker rm httpdemo
+httpdemo
++ echo --------------Building Docker Image-------------
+--------------Building Docker Image-------------
++ echo 673e9c8
+673e9c8
++ docker build -t demohttp:673e9c8 .
+Sending build context to Docker daemon  12.38MB
+
+Step 1/7 : FROM worden525/centos7-golang
+ ---> 672804159bb1
+Step 2/7 : COPY simpleHttpServer.go /
+ ---> Using cache
+ ---> 4656bd2d1616
+Step 3/7 : RUN cd / && go build --tags netgo simpleHttpServer.go
+ ---> Using cache
+ ---> 87bb7619b0b0
+Step 4/7 : CMD [ "/simpleHttpServer" ]
+ ---> Using cache
+ ---> b3ec702787fe
+Step 5/7 : FROM alpine
+ ---> 0ac33e5f5afa
+Step 6/7 : COPY --from=0  /simpleHttpServer /
+ ---> Using cache
+ ---> 07c70e0f1d4b
+Step 7/7 : CMD [ "/simpleHttpServer" ]
+ ---> Using cache
+ ---> 31b76c31afbb
+Successfully built 31b76c31afbb
+Successfully tagged demohttp:673e9c8
++ docker tag demohttp:673e9c8 demohttp:1.0
++ echo --------------Launching Container---------------
+--------------Launching Container---------------
++ docker run --name httpdemo -d -p 12802:12802 demohttp:1.0
+9ccc6d336f3dca5a61707cf2ecc5138ad8539c42ed3593ff3605bb90930be638
++ date +%Y%m%d%H%M%S
++ docker save demohttp:1.0
+Finished: SUCCESS
+```
+
+![image-20220510225305687](06 Git学习.assets/image-20220510225305687.png)
+
+
+
+### 4.2.5 Push Over SSH插件
+
+http://t.zoukankan.com/ifme-p-12901473.html
 
 
 
