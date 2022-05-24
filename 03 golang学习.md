@@ -3,6 +3,9 @@
 ## 1.1 基础环境
 
 + 安装包下载地址为： https://golang.google.cn/dl/
+
+### 1.1.1 环境设置
+
 + 设置env变量
 
 ```shell
@@ -66,6 +69,58 @@ func main() {
 Code=123&endDate=2020-12-31
 [root@5d09d6b9f9d5 golang]#
 ```
+
+### 1.1.2 VS Code 设置
+
+#### 1.1.2.1 launch.json
+
+```json
+{
+    // 使用 IntelliSense 了解相关属性。 
+    // 悬停以查看现有属性的描述。
+    // 欲了解更多信息，请访问: https://go.microsoft.com/fwlink/?linkid=830387
+    "version": "0.2.0",
+    "configurations": [
+        
+        {
+            "name": "Launch Package",
+            "type": "go",
+            "request": "launch",
+            "mode": "debug",
+            //当运行单个文件时{workspaceFolder}可改为{file}
+            //"program": "${workspaceFolder}",
+            "program": "${fileDirname}",
+            "buildFlags": "",
+            "env": {
+                //cgo配置，使用cygwin下安装mingw64
+                //等同于命令行：CGO_ENABLED=1 CC=x86_64-w64-mingw32-gcc CXX=x86_64-w64-mingw32-g++ go build -o Waiter.exe Waiters.go
+                "CGO_ENABLED":"1",
+                "CC":"x86_64-w64-mingw32-gcc",
+                "CXX":"x86_64-w64-mingw32-g++ ",
+            },
+            "args": [ ],
+            //"args": [ "-c" , "../conf/Waiters.conf" ],
+            "showGlobalVariables": true,
+            "showLog": true
+
+        }
+    ]
+}
+```
+
+#### 1.1.2.2 github配置
+
++ 在`C:\Users\Administrator\.ssh`下放入id_ed25519.pub和id_ed25519，并创建config；
++ config内容如下
+
+```ini
+Host github.com
+  HostName github.com
+  IdentityFile ~/.ssh/id_ed25519
+```
+
++ 必须在github上设置公钥，即id_ed25519.pub；
++ 先在github上创建repository，再进行上传；
 
 ## 1.2 数据类型
 
@@ -2499,7 +2554,7 @@ go get: upgraded golang.org/x/sys v0.0.0-20211103235746-7861aae1554b => v0.0.0-2
 
 
 
-# 2 应用使用
+# 2 应用实例
 
 ## 2.1 数据库访问
 
@@ -2842,6 +2897,74 @@ func main() {
         fmt.Println(created)
     }
 }
+```
+
++ sqlite操作
+
+```shell
+[root@Worden-1-3 data]# sqlite3 ./Waiters.db
+SQLite version 3.24.0 2018-06-04 19:24:41
+Enter ".help" for usage hints.
+sqlite> 
+sqlite> .tables                    #查看表列表
+Api   Auth  Conn  User
+sqlite>
+sqlite> .headers on                #select时显示表头
+sqlite>
+sqlite> select * from User ;       #查询User表
+User|Passwd|Role|Total|Host|Clock
+admin|password01!|admin|3|61.155.203.88|2022-05-18 20:15:26
+guest|password01!|guest|0||
+sqlite>
+sqlite> .schema                    #查看建表语句
+CREATE TABLE User (
+    User varchar(50) primary key unique not null,               --用户名
+    Passwd varchar(50) not null,                                --密码
+    Role varchar(10) not null default 'guest',                  --角色
+    Total int not null default 0,                               --登录统计
+    Host varchar(20),                                           --登录地址
+    Clock time                                                  --更新时间
+);
+CREATE TABLE Auth (
+    Token varchar(50) primary key unique not null,              --TOKEN
+    Host varchar(50) not null,                                  --地址,
+    User varchar(10) not null,                                  --用户
+    Clock time not null default (datetime('now', 'localtime'))  --更新时间
+);
+CREATE TABLE Conn (
+    DbId integer primary key autoincrement unique not null,     --数据源ID
+    DbName varchar(255) not null,                               --数据源名称
+    DbType varchar(20) not null,                                --数据源类型
+    DbConn text not null,                                       --连接串
+    Clock time not null default (datetime('now', 'localtime'))  --更新时间
+);
+CREATE TABLE sqlite_sequence(name,seq);
+CREATE TABLE Api (
+    Url varchar(255) primary key unique not null,               --名称
+    Func varchar(20) not null default 'GET',                    --请求类型
+    Mode varchar(20) not null default 'query',                  --命令类型
+    Auth int not null default 0,                                --TOKEN认证
+    DbId int not null default 0,                                --数据源ID
+    Cmd  text not null,                                         --自定义命令
+    Param text,                                                 --请求参数
+    Result text,                                                --返回结果
+    Explain text,                                               --说明
+    Total int not null default 0,                               --请求次数
+    Clock time not null default (datetime('now', 'localtime'))  --更新时间
+);
+CREATE TRIGGER FK_AuthPost
+before insert on Auth
+begin
+    update User set Total = (select Total + 1 from User where User = new.User), Host = new.Host, Clock = datetime('now', 'localtime') where User = new.User;
+    delete from Auth where Clock < strftime('%Y-%m-%d %H:%M:%S', 'now', 'localtime', '-20 minute');
+end;
+CREATE TRIGGER FK_AuthPut
+after update on Auth
+begin
+    delete from Auth where Clock < strftime('%Y-%m-%d %H:%M:%S', 'now', 'localtime', '-20 minute');
+end;
+sqlite>
+
 ```
 
 
@@ -3695,6 +3818,65 @@ func main() {
 [2022-03-17 13:39:33] [DEBUG] [TestSeelog.go:20] seelog debug
 [root@5d09d6b9f9d5 seelog]#
 ```
+
+## 2.5 jwt模块
+
++ 获取jwt   ``go get github.com/golang-jwt/jwt``
+
+```go
+package main
+
+import (
+	"fmt"
+	"log"
+	"time"
+
+	"github.com/golang-jwt/jwt"
+)
+
+func main() {
+
+	//加密过程
+	mySigningKey := []byte("asfasfdafasdfdasfa.")
+	token := jwt.NewWithClaims(jwt.SigningMethodHS256, jwt.MapClaims{
+		"name": "司大帅",
+		"exp":  time.Now().Unix() + 5,
+		"iss":  "sywdebug",
+	})
+	tokenString, err := token.SignedString(mySigningKey)
+	if err != nil {
+		log.Println(err.Error())
+		return
+	}
+	fmt.Println("加密后的token字符串", tokenString)
+
+	//解密过程
+
+	//在这里如果也使用jwt.ParseWithClaims的话，第二个参数就写jwt.MapClaims{}
+	//例如jwt.ParseWithClaims(tokenString, jwt.MapClaims{},func(t *jwt.Token) (interface{}, error){}
+
+	token, err = jwt.Parse(tokenString, func(t *jwt.Token) (interface{}, error) {
+		return mySigningKey, nil
+	})
+	if err != nil {
+		log.Println(err.Error())
+		return
+	}
+	fmt.Println("token:", token)
+	fmt.Println("token.Claims:", token.Claims)
+	fmt.Println(token.Claims.(jwt.MapClaims)["name"])
+}
+
+```
+
+```shell
+加密后的token字符串 eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJleHAiOjE2NTMxMjQwNDEsImlzcyI6InN5d2RlYnVnIiwibmFtZSI6IuWPuOWkp-W4hSJ9.zGJPF_FNDaN8FFcllcRAFzPNlvMAGCetKn4Lrb_LO9Y
+token: &{eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJleHAiOjE2NTMxMjQwNDEsImlzcyI6InN5d2RlYnVnIiwibmFtZSI6IuWPuOWkp-W4hSJ9.zGJPF_FNDaN8FFcllcRAFzPNlvMAGCetKn4Lrb_LO9Y 0xc000004120 map[alg:HS256 typ:JWT] map[exp:1.653124041e+09 iss:sywdebug name:司大帅] zGJPF_FNDaN8FFcllcRAFzPNlvMAGCetKn4Lrb_LO9Y true}
+token.Claims: map[exp:1.653124041e+09 iss:sywdebug name:司大帅]
+司大帅
+```
+
+
 
 # 3 Gin框架
 
