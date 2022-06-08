@@ -1606,6 +1606,18 @@ $ git rm -r <文件夹路径>
 $ git rm --cached
 ```
 
+### git ls-remote
+
+在远程存储库中列出引用
+
+```shell
+# 列出远程存储库中所有的引用
+$ git ls-remote origin 
+
+# 列出远程存储库中指定refs路径下的引用
+$ git ls-remote origin  <refs路径>
+
+```
 
 
 # END
