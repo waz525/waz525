@@ -3046,7 +3046,68 @@ func main() {
 
 ```
 
-### 2.2.1 解析json的post请求体参数
+### 2.2.2 解析json的post请求体参数的几种方法
+
+```go
+/////////////////////////////////////////////////////////////////
+		body, err := ioutil.ReadAll(req.Body)
+		if err != nil {
+			fmt.Fprintf(rw, "{\"ERROR\":\"read body err, %v\n", err)
+			return
+		}
+		postBody := string(body)
+		fmt.Println("postBody: ", postBody)
+/*
+postBody:  param%5BId%5D=8&param%5Bstarttime%5D=2022-05-01+00%3A00%3A00&param%5Bendtime%5D=2022-05-02+00%3A00%3A00&limit%5Bpagesize%5D=10&limit%5Bpageno%5D=3
+*/
+/////////////////////////////////////////////////////////////////
+
+		if err := req.ParseForm(); err != nil {
+			fmt.Fprintf(rw, "{\"ERROR\":\"ParseForm() err: %v\"}", err)
+			return
+		}
+		postForm := req.PostForm
+		fmt.Println("req.PostForm: ", postForm)
+		seelog.Flush()
+
+/*
+req.PostForm:  map[limit[pageno]:[3] limit[pagesize]:[10] param[Id]:[8] param[endtime]:[2022-05-02 00:00:00] param[starttime]:[2022-05-01 00:00:00]]
+*/
+/////////////////////////////////////////////////////////////////
+
+/*
+ajax请求必须用JSON.stringify转换，如下：
+
+					"data":JSON.stringify({
+                        "user": "user2",
+                        "passwd": "pwdsss2"
+                    }),
+*/
+
+
+	//初始化请求变量结构
+	formData := make(map[string]interface{})
+	// 调用json包的解析，解析请求body
+	json.NewDecoder(req.Body).Decode(&formData)
+	fmt.Println("formData:", formData)
+	for key, value := range formData {
+		fmt.Println("key:", key, " => value :", value)
+	}
+/*
+formData: map[passwd:pwdsss2 user:user2]
+key: user  => value : user2
+key: passwd  => value : pwdsss2
+*/
+
+```
+
+
+
+
+
+
+
+
 
 ```go
 //simpleHttpServer2.go
@@ -3144,6 +3205,12 @@ func main() {
 }
 
 ```
+
+
+
+
+
+
 
 ### 2.2.3 静态资源与参数读取
 
@@ -5604,6 +5671,15 @@ func main() {
 10
 100
 200
+```
+
+### 4.2.2 字符串比较
+
+```go
+//区分大小写
+strings.Compare("GO","go")
+//不区分大小写
+strings.EqualFold("GO","go")
 ```
 
 
