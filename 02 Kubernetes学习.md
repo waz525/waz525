@@ -1259,7 +1259,7 @@ kubectl taint nodes foo dedicated=special-user:NoSchedule
 | -o=wide                           | 以纯文本格式输出额外信息，对于 Pod 来说，输出中包含了节点名称 |
 | -o=yaml                           | 输出 YAML 格式的 API 对象                                    |
 
-使用 -o=custom-columns 的示例：
+ 使用 -o=custom-columns 的示例：
 
 ```shell
 # 集群中运行着的所有镜像
