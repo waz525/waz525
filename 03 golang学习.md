@@ -13,7 +13,9 @@ WORK_DIR=$(cd $(dirname $0) && pwd )
 echo $WORK_DIR
 
 # 解决go get 超时问题
-go env -w GOPROXY="https://goproxy.cn"
+# go env -w GOPROXY="https://goproxy.cn"
+go env -w GOPROXY="https://proxy.golang.com.cn,direct"
+
 # 解决gopath无效的问题，不使用go.mod
 go env -w GO111MODULE="auto"
 go env -w GOPATH="${WORK_DIR}/go_lib"
